@@ -374,3 +374,145 @@ html.dark .rh-anim {
 .is-wide ~ div #content-area {
   width: 100% !important;
 }
+
+/* --- reference tables (methodology) -------------------------------------- */
+
+.rh-ref {
+  --rh-accent: #16c784;
+  --rh-flame: #f97316;
+  --rh-mono: ui-monospace, "SF Mono", Menlo, monospace;
+  --rh-text: #0f172a;
+  --rh-text-2: rgba(15, 23, 42, 0.68);
+  --rh-text-3: rgba(15, 23, 42, 0.45);
+  --rh-rule: rgba(15, 23, 42, 0.16);
+  --rh-rule-soft: rgba(15, 23, 42, 0.08);
+  margin: 1.25rem 0 2.5rem;
+}
+html.dark .rh-ref {
+  --rh-text: #ffffff;
+  --rh-text-2: rgba(255, 255, 255, 0.7);
+  --rh-text-3: rgba(255, 255, 255, 0.45);
+  --rh-rule: rgba(255, 255, 255, 0.16);
+  --rh-rule-soft: rgba(255, 255, 255, 0.08);
+}
+.rh-ref table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  margin: 0;
+  font-size: 0.875rem;
+}
+.rh-ref thead tr { border-bottom: 1px solid var(--rh-rule); }
+.rh-ref th, .rh-ref td {
+  border: 0;
+  background: none;
+  vertical-align: top;
+  padding: 0.85rem 1.5rem 0.85rem 0;
+}
+.rh-ref th:last-child, .rh-ref td:last-child { padding-right: 0; }
+.rh-ref thead th {
+  color: var(--rh-text-2);
+  font-family: var(--rh-mono);
+  font-size: 0.6875rem;
+  line-height: 1rem;
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  padding-top: 0;
+  padding-bottom: 0.75rem;
+}
+.rh-ref tbody tr { border-bottom: 1px solid var(--rh-rule-soft); }
+.rh-ref tbody th {
+  color: var(--rh-text);
+  font-size: 1rem;
+  font-weight: 500;
+  line-height: 1.35;
+  width: 24%;
+}
+.rh-ref tbody td {
+  color: var(--rh-text-2);
+  line-height: 1.6;
+}
+.rh-ref .rh-mono {
+  font-family: var(--rh-mono);
+  font-size: 0.8125rem;
+  color: var(--rh-text-2);
+  white-space: nowrap;
+}
+.rh-ref .rh-tag {
+  font-family: var(--rh-mono);
+  font-size: 0.6875rem;
+  line-height: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  white-space: nowrap;
+}
+.rh-ref .rh-tag--rule { color: var(--rh-flame); }
+.rh-ref .rh-tag--weight { color: var(--rh-accent); }
+.rh-ref .rh-tag--report { color: var(--rh-text-3); }
+.rh-ref .rh-tag--always { color: var(--rh-accent); }
+.rh-ref .rh-tag--approval { color: var(--rh-text-3); }
+
+/* two records side by side */
+.rh-ref.rh-ref--pair {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2.5rem 3.5rem;
+}
+@media (min-width: 768px) {
+  .rh-ref.rh-ref--pair { grid-template-columns: 1fr 1fr; }
+}
+.rh-ref--pair h3 {
+  margin: 0 0 1rem;
+  color: var(--rh-text-2);
+  font-family: var(--rh-mono);
+  font-size: 0.6875rem;
+  font-weight: 400;
+  line-height: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+}
+.rh-ref--pair tbody th { font-size: 0.9375rem; font-weight: 400; width: auto; }
+.rh-ref--pair tbody td { text-align: right; width: 1%; white-space: nowrap; }
+
+/* market profiles */
+.rh-ref .rh-market { padding: 0.25rem 0 1.75rem; border-bottom: 1px solid var(--rh-rule-soft); }
+.rh-ref .rh-market:last-child { border-bottom: 0; }
+.rh-ref .rh-market h3 {
+  margin: 1.5rem 0 1rem;
+  color: var(--rh-text);
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+.rh-ref .rh-market dl { margin: 0; display: grid; gap: 0.75rem; }
+.rh-ref .rh-market div { display: grid; grid-template-columns: 1fr; gap: 0.25rem; margin: 0; }
+@media (min-width: 640px) {
+  .rh-ref .rh-market div { grid-template-columns: 160px 1fr; gap: 1.5rem; }
+}
+.rh-ref .rh-market dt {
+  margin: 0;
+  padding-top: 0.2rem;
+  color: var(--rh-text-2);
+  font-family: var(--rh-mono);
+  font-size: 0.6875rem;
+  line-height: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+}
+.rh-ref .rh-market dd { margin: 0; color: var(--rh-text-2); font-size: 0.9375rem; line-height: 1.6; }
+
+/* market profiles as label/value tables */
+.rh-ref--markets .rh-market table { margin: 0; }
+.rh-ref--markets .rh-market tbody tr { border-bottom: 0; }
+.rh-ref--markets .rh-market tbody th {
+  width: 160px;
+  padding: 0.4rem 1.5rem 0.4rem 0;
+  color: var(--rh-text-2);
+  font-family: var(--rh-mono);
+  font-size: 0.6875rem;
+  font-weight: 400;
+  line-height: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+}
+.rh-ref--markets .rh-market tbody td { padding: 0.4rem 0; font-size: 0.9375rem; }
