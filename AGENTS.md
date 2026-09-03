@@ -34,6 +34,19 @@ This is the Mintlify documentation site for Rabbithole (app.rabbithole.gg) and t
 - **Pricing** on `campaigns/pricing.mdx` is a proposal under review.
 - Numbers observed in the live app (tier entry counts, prize size, cut-offs) are examples of the current configuration, not commitments.
 
+## Animated components (snippets)
+
+Interactive pieces ported from the landing site live in `snippets/*.mdx` and are styled by `style.css` (scoped under `.rh-anim`, with dark-mode tokens under `html.dark`). The Mintlify snippet compiler is strict; every one of these was learned the hard way:
+
+- Use `.mdx` files, not `.jsx`. The local CLI never resolves `.jsx` snippets.
+- One self-contained `export const Component = () => { ... }` per concern. Helpers, constants, and data must live **inside** the component body. Sibling exports in the same file are not in scope at runtime.
+- No blank lines inside an `export` block. MDX ends the block at the first blank line and the rest becomes prose.
+- No grouping parentheses in expressions: `(a + b) * c`, `!(x in y)`, `(v / t).toFixed()` all crash the code printer. Hoist into named constants and reorder arithmetic instead.
+- No `//` comments outside an export block. They render as text.
+- Hooks (`useState`, `useEffect`, `useRef`) are injected. No imports, no npm packages, no `useLayoutEffect` or `useId`.
+- Import into a page with `import { X } from "/snippets/x.mdx"` directly under the frontmatter.
+- The local CLI must be current: `pnpm add -g mint@latest && mint update`. Kill dev servers by PID; `mint dev` restarts otherwise stack on new ports.
+
 ## Validation
 
 ```bash

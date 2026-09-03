@@ -1,0 +1,63 @@
+export const CampaignWorkflow = () => {
+  const steps = [
+    { number: "01", title: "Define", body: "The pool, the chain, the asset you want TVL in, and how much.", control: "You set" },
+    { number: "02", title: "Target", body: "Who qualifies: net-new capital only, balance floors, wallet caps, onchain activity.", control: "You set" },
+    { number: "03", title: "Attribute", body: "We build and run the campaign in the app, and every deposit is traced to its source. You see what your budget bought, per campaign. Unclaimed budget returns to you.", control: "Rabbithole operates and reports" },
+  ];
+  const listRef = useRef(null);
+  const fillRef = useRef(null);
+  const litRef = useRef(3);
+  const [lit, setLit] = useState(3);
+  useEffect(() => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const list = listRef.current;
+    const fill = fillRef.current;
+    if (!list || !fill) return;
+    litRef.current = 0;
+    setLit(0);
+    let frame = 0;
+    const step = () => {
+      frame = 0;
+      const rect = list.getBoundingClientRect();
+      const read = window.innerHeight * 0.66 - rect.top;
+      const progress = Math.min(1, Math.max(0, read / rect.height));
+      fill.style.transform = "scaleY(" + progress + ")";
+      let count = 0;
+      list.querySelectorAll("[data-step]").forEach((node) => {
+        if (node.offsetTop + 14 <= read) count += 1;
+      });
+      if (count !== litRef.current) {
+        litRef.current = count;
+        setLit(count);
+      }
+    };
+    const onScroll = () => {
+      if (!frame) frame = requestAnimationFrame(step);
+    };
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll, { passive: true });
+    return () => {
+      if (frame) cancelAnimationFrame(frame);
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+    };
+  }, []);
+  return <div className="rh-anim not-prose">
+    <ol ref={listRef} className="rh-timeline">
+      <span aria-hidden className="rh-timeline__spine" />
+      <span ref={fillRef} aria-hidden className="rh-timeline__fill" style={{ transform: "scaleY(1)" }} />
+      {steps.map((step, index) => <li key={step.number} data-step data-on={index < lit ? "true" : "false"} className="rh-step">
+        <span aria-hidden className="rh-step__node" />
+        <div className="rh-step__body">
+          <div className="rh-step__head">
+            <span className="rh-label rh-label--muted">{step.number}</span>
+            <h3 className="rh-step__title">{step.title}</h3>
+          </div>
+          <p className="rh-body rh-step__text">{step.body}</p>
+          <span className="rh-label rh-label--muted rh-step__control">{step.control}</span>
+        </div>
+      </li>)}
+    </ol>
+  </div>;
+};
