@@ -1,0 +1,177 @@
+---
+title: "Methodology"
+description: "How a Rabbithole campaign is measured, what qualifies, and what is published"
+---
+
+Every campaign is reported against the same measures, qualification rules, and disclosure standards. This page defines them. It is definitions only. Figures appear on a campaign's own record once the sponsor and the evidence are approved.
+
+<Note>
+  Signals and qualification rules vary by campaign. Rabbithole does not imply identity, compliance, or source-of-funds verification unless a campaign explicitly states it.
+</Note>
+
+## The Five Measures
+
+Every campaign reports the same five numbers, on the same definitions, during the reward window and after it closes.
+
+<div className="rh-ref not-prose">
+  <table>
+    <thead>
+      <tr><th>Measure</th><th>Definition</th><th>Observation window</th><th>Why it matters</th></tr>
+    </thead>
+    <tbody>
+      <tr><th scope="row">Retained wallets</th><td>Unique qualifying wallets still in the target behaviour at the observation point.</td><td><span className="rh-mono">D30 · D60 · D90</span></td><td>Whether the campaign reached wallets that stay.</td></tr>
+      <tr><th scope="row">Retained capital</th><td>Qualifying dollar value still in the target position at the observation point.</td><td><span className="rh-mono">D30 · D60 · D90</span></td><td>The headline outcome the budget is bought against.</td></tr>
+      <tr><th scope="row">Time-in-position</th><td>Measured duration qualifying capital remains in the target position.</td><td><span className="rh-mono">Continuous</span></td><td>Distinguishes held capital from capital passing through.</td></tr>
+      <tr><th scope="row">Repeat activity</th><td>Share of eligible wallets completing the target behaviour across more than one cycle.</td><td><span className="rh-mono">Per cycle</span></td><td>Whether behaviour outlasts the reward that started it.</td></tr>
+      <tr><th scope="row">Cost per retained dollar</th><td>Approved incentive spend divided by qualifying capital retained at the selected point.</td><td><span className="rh-mono">D30 · D60 · D90</span></td><td>Comparable efficiency across campaigns and venues.</td></tr>
+    </tbody>
+  </table>
+</div>
+
+## What Qualifies
+
+Each signal is applied as a hard rule, which excludes capital; as a weighting, which changes how fast it accrues; or for reporting only.
+
+<div className="rh-ref not-prose">
+  <table>
+    <thead>
+      <tr><th>Signal</th><th>Applied as</th><th>Effect</th></tr>
+    </thead>
+    <tbody>
+      <tr><th scope="row">Eligibility</th><td><span className="rh-tag rh-tag--rule">Hard rule</span></td><td>Wallets outside the campaign criteria are excluded.</td></tr>
+      <tr><th scope="row">Prior behaviour</th><td><span className="rh-tag rh-tag--rule">Hard rule / weight</span></td><td>Minimum onchain history to qualify, or higher accrual for demonstrated activity.</td></tr>
+      <tr><th scope="row">Capital</th><td><span className="rh-tag rh-tag--rule">Hard rule</span></td><td>Balance floor, and in-scope asset and venue checks.</td></tr>
+      <tr><th scope="row">Net-new balance</th><td><span className="rh-tag rh-tag--rule">Hard rule</span></td><td>Separates capital new to the target position from capital rotated within it.</td></tr>
+      <tr><th scope="row">Persistence</th><td><span className="rh-tag rh-tag--weight">Weighting</span></td><td>Accrual scales with measured time-in-position.</td></tr>
+      <tr><th scope="row">Concentration</th><td><span className="rh-tag rh-tag--report">Reporting</span></td><td>Segments results by wallet share. Does not exclude capital or change accrual.</td></tr>
+    </tbody>
+  </table>
+</div>
+
+The campaign controls that implement these signals are described in [Campaign Modes](/campaigns/campaign-modes) and [Earning Activation](/campaigns/earning-activation).
+
+## The Reporting Rail
+
+Every campaign produces two records. Some fields are always published; others are published once the sponsor approves.
+
+<div className="rh-ref rh-ref--pair not-prose">
+  <div>
+    <h3>Campaign record</h3>
+    <table>
+      <tbody>
+        <tr><th scope="row">Sponsor and relationship</th><td><span className="rh-tag rh-tag--approval">On approval</span></td></tr>
+        <tr><th scope="row">Market, network, assets</th><td><span className="rh-tag rh-tag--always">Always</span></td></tr>
+        <tr><th scope="row">Capacity and committed capital</th><td><span className="rh-tag rh-tag--approval">On approval</span></td></tr>
+        <tr><th scope="row">Eligibility rules</th><td><span className="rh-tag rh-tag--always">Always</span></td></tr>
+        <tr><th scope="row">Reward mechanic</th><td><span className="rh-tag rh-tag--always">Always</span></td></tr>
+        <tr><th scope="row">Measurement window</th><td><span className="rh-tag rh-tag--always">Always</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div>
+    <h3>Outcome record</h3>
+    <table>
+      <tbody>
+        <tr><th scope="row">Capital activated</th><td><span className="rh-tag rh-tag--approval">On approval</span></td></tr>
+        <tr><th scope="row">Retained at day 30 / 60 / 90</th><td><span className="rh-tag rh-tag--approval">On approval</span></td></tr>
+        <tr><th scope="row">Median time-in-position</th><td><span className="rh-tag rh-tag--approval">On approval</span></td></tr>
+        <tr><th scope="row">Cost per retained dollar</th><td><span className="rh-tag rh-tag--approval">On approval</span></td></tr>
+        <tr><th scope="row">Cohort definition and exclusions</th><td><span className="rh-tag rh-tag--always">Always</span></td></tr>
+        <tr><th scope="row">Source and methodology</th><td><span className="rh-tag rh-tag--always">Always</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+## Cohorts and Exclusions
+
+<div className="rh-ref not-prose">
+  <table>
+    <thead>
+      <tr><th>Term</th><th>Definition</th></tr>
+    </thead>
+    <tbody>
+      <tr><th scope="row">Activated cohort</th><td>Wallets that met the eligibility rules and entered the target position inside the reward window.</td></tr>
+      <tr><th scope="row">Observation point</th><td>The day the cohort is re-measured, counted from campaign start. D30, D60, and D90 unless a campaign states otherwise.</td></tr>
+      <tr><th scope="row">Excluded</th><td>Capital rotated within the same venue, circular flows between campaign wallets, and any address the sponsor names as internal.</td></tr>
+      <tr><th scope="row">Revisions</th><td>If an indexer corrects upstream data, the affected result is republished with a revision date rather than edited silently.</td></tr>
+    </tbody>
+  </table>
+</div>
+
+## Market Utility
+
+Retention is the common measure. What counts as useful retention depends on the market.
+
+<div className="rh-ref rh-ref--markets not-prose">
+  <div className="rh-market">
+    <h3>DeFi and lending</h3>
+    <table>
+      <tbody>
+      <tr><th scope="row">Objective</th><td>Grow supplied capital that stays available to borrowers.</td></tr>
+      <tr><th scope="row">Failure mode</th><td>Supply arrives, utilisation stays flat, and capital leaves the moment rewards unlock.</td></tr>
+      <tr><th scope="row">Retention metric</th><td>Retained supply at day 30, 60, and 90, against the activated cohort.</td></tr>
+      <tr><th scope="row">Market measure</th><td>Utilisation, borrow demand, withdrawal capacity, and supplier concentration, where the venue exposes them.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div className="rh-market">
+    <h3>Stablecoins</h3>
+    <table>
+      <tbody>
+      <tr><th scope="row">Objective</th><td>Grow retained supply that is actually usable in secondary markets.</td></tr>
+      <tr><th scope="row">Failure mode</th><td>Supply grows on paper while depth stays thin, so redemptions and exits move the peg.</td></tr>
+      <tr><th scope="row">Retention metric</th><td>Retained balances by holder cohort, through and beyond the incentive window.</td></tr>
+      <tr><th scope="row">Market measure</th><td>Secondary-market depth, price deviation, redemption capacity, and distribution across approved venues.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div className="rh-market">
+    <h3>Ecosystems</h3>
+    <table>
+      <tbody>
+      <tr><th scope="row">Objective</th><td>Attract capital that stays in the ecosystem and gets used more than once.</td></tr>
+      <tr><th scope="row">Failure mode</th><td>Capital bridges in for the campaign and bridges straight back out afterwards.</td></tr>
+      <tr><th scope="row">Retention metric</th><td>Net bridged capital still held after the observation window closes.</td></tr>
+      <tr><th scope="row">Market measure</th><td>Repeat application usage, multi-protocol participation, and circular-flow exclusions.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+Retained balances are not automatically deep liquidity. Where a venue does not expose market-side measures, Rabbithole reports capital retention, not market depth.
+
+## Diligence
+
+Each campaign's diligence pack documents the following. Ask the team for the pack for a specific campaign.
+
+<div className="rh-ref not-prose">
+  <table>
+    <thead>
+      <tr><th>Topic</th><th>What is documented</th></tr>
+    </thead>
+    <tbody>
+      <tr><th scope="row">Custody and fund flow</th><td>Who funds rewards, and whether Rabbithole ever controls user principal.</td></tr>
+      <tr><th scope="row">Contracts</th><td>Addresses, versions, networks, and source links.</td></tr>
+      <tr><th scope="row">Permissions</th><td>Sponsor, operator, multisig, and emergency powers.</td></tr>
+      <tr><th scope="row">Audits</th><td>Firm, date, exact scope, and report.</td></tr>
+      <tr><th scope="row">Data sources</th><td>The indexers and providers behind reporting, and their update cadence.</td></tr>
+      <tr><th scope="row">Incidents</th><td>Status and disclosure channel.</td></tr>
+      <tr><th scope="row">Entity</th><td>The responsible operating and contracting entity.</td></tr>
+      <tr><th scope="row">Legal</th><td>Terms, privacy, eligibility, and jurisdictional limits.</td></tr>
+    </tbody>
+  </table>
+</div>
+
+Contract addresses and the claim interface are also published for developers on [Contracts](/developers/contracts).
+
+## Limits of These Measures
+
+- Retention is measured against a defined position, not against a wallet's total portfolio. Capital may leave one campaign and stay onchain.
+- Attribution is to a campaign, not to a cause. A retained balance is not proof the incentive caused the retention.
+- Market-side measures depend on what a venue exposes. Where they are unavailable, only retention is reported.
+- Wallets are not identities. Concentration is reported at wallet level, and one operator may control several.
+
+## Ask About a Specific Campaign
+
+Eligibility, reward mechanics, and the full diligence pack are available per campaign. [Reach out on Discord](https://discord.gg/JTCqaekdm) or start with [Launch a Campaign](/campaigns/launch-a-campaign).
