@@ -1,0 +1,72 @@
+---
+title: "Launch a Campaign"
+description: "How to bring a campaign to life with the Rabbithole team"
+---
+
+Today, every campaign is set up directly with the Boost team. There's no self-serve dashboard yet — a public-facing one is on the roadmap, but until it ships our team handles onboarding and deployment for each program. The upside: you get hands-on help shaping the campaign before it goes live, and you don't have to write any integration code to get started.
+
+This page walks through what to expect.
+
+## Start with a Conversation
+
+Most campaigns kick off with a single message. A contact form is on its way; until then, [Reach out to the team on Discord](https://discord.gg/JTCqaekdm) with:
+
+- **The protocol or asset** you want to incentivize
+- **The goal** — deeper liquidity, more holders, longer holds, retention boost, etc.
+- **Rough budget and timeline**
+- **Any constraints** — chains involved, eligibility rules, partner relationships
+
+We'll come back with a recommended setup, confirm the engineering lift on our side, and schedule the work.
+
+## What We'll Set Up Together
+
+### 1. Indexer onboarding
+
+If the protocol or asset you want to reward isn't already supported, we extend our indexer to track it. This is the main reason early campaigns aren't self-serve — our system needs to know how to read your contract events and how to measure each user's position.
+
+You'll bring:
+
+- Contract addresses
+- Chain(s) to index
+- Token standards involved (ERC20, ERC1155, etc.)
+- How position size should be measured (token balance, USD value, LP share, etc.)
+
+Once a protocol is onboarded, additional campaigns on it can launch much faster.
+
+### 2. Campaign design
+
+The shape of the campaign — who earns, how much, for how long. We'll work through these decisions together:
+
+| Decision | What it controls |
+|----------|------------------|
+| **Targets** | Which positions count toward rewards |
+| **Eligibility** | Who can earn — open, allowlist, or verification-gated |
+| **Modes** | Stackable rules that shape reward math (caps, tiers, snapshots, fixed APY) |
+| **Reward token** | What you're paying out |
+| **Total budget** | The reward pool size |
+| **Duration** | Start and end times |
+
+You don't need to come in with all of this answered. The right configuration usually falls out of a conversation about goals.
+
+<Card title="Think through your design first" icon="layer-group" href="/campaigns/campaign-modes">
+  Read up on campaign modes to see what the reward math can do. You'll come into the conversation with a clearer picture of what's possible.
+</Card>
+
+### 3. Deployment
+
+Once the design is locked, we deploy:
+
+1. The campaign config is hashed and committed
+2. The on-chain campaign contract is created from your funded budget
+3. Indexing begins; accruals start at the campaign's start time
+
+You'll get a campaign ID and the campaign goes live at its scheduled `startTime`.
+
+## After Launch
+
+- **End early** if priorities shift — already-accrued rewards remain claimable
+- **Watch it run** on [rabbithole.gg](https://rabbithole.gg), where TVL, participants, and live leaderboard stats are surfaced
+
+## Coming Soon
+
+A self-serve dashboard for designing, funding, and deploying campaigns is in development. When it ships, this page will become a guide to that flow. Until then, the white-glove path means a tight feedback loop with our team and a campaign tuned to your goals from day one.

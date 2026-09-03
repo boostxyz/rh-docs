@@ -1,0 +1,108 @@
+---
+title: "Hold to Earn"
+description: "Browse campaigns, read the campaign panel, deposit, watch rewards accrue, and claim"
+---
+
+**Hold to Earn** is the core of Rabbithole. Each row is a campaign: a reward budget that pays people for keeping a position open in a specific vault, pool, or market. This page walks through what you see and what each number means.
+
+## The Home Dashboard
+
+<Frame>
+  <img src="/images/rabbithole/home-dashboard.jpg" alt="Rabbithole home dashboard showing projected live earnings, the tier deposit goal ring, current rank and tier bar, stat tiles for earning campaigns, available to claim, claimed this week, and deposited, and a featured campaign card." />
+</Frame>
+
+- **Projected Live Earnings** ticks up in real time as rewards accrue across all your positions. The D / W / M / Y toggle changes the projection window.
+- **Reach the next tier** shows what you could earn a year at the next tier's deposit goal, with a ring tracking your progress toward it.
+- **Current Rank** is your position on the weekly leaderboard, your percentile, and your tier on the Bronze to Diamond bar. See [Tiers and Leaderboard](/rabbithole/tiers-and-leaderboard).
+- **Stat tiles** show how many campaigns you are earning in, what is claimable right now, what you claimed this week, and your total deposited.
+- **Featured campaign** highlights one campaign, sometimes with a perk such as bonus [raffle entries](/rabbithole/raffle) for every dollar you claim.
+
+## The Campaign Table
+
+<Frame>
+  <img src="/images/rabbithole/hold-to-earn-table.jpg" alt="The Hold to Earn table listing campaigns with their badges, APY, TVL, days until end, and a status column showing either an Open status with remaining rewards or a Claim button." />
+</Frame>
+
+| Column | Meaning |
+| --- | --- |
+| **Opportunity** | The campaign name and its badges (see below). |
+| **APY** | The current annualized reward rate. For most campaigns this floats with how much is deposited. |
+| **TVL** | Total value deposited in the underlying protocol or pool. "Unavailable" means the protocol does not publish it. |
+| **Ends in** | Days until the campaign stops paying. |
+| **Status** | **Open** with the share of the reward budget still left, or a **Claim** button when you have rewards ready. |
+
+Use the sort control to put claimable campaigns first, and the category filter to narrow by asset type.
+
+### Badges
+
+| Badge | What it means for you |
+| --- | --- |
+| **Capped APY** | Rewards are throttled so the APY never exceeds the shown maximum. Early on, when few people have deposited, the cap is what you earn. |
+| **Fixed APY** | You earn the shown rate regardless of how many people join. The campaign ends early if the budget runs out. |
+| **New capital only** | Only deposits made after the campaign started count. Money that was already in the protocol earns nothing until you add to it. |
+| **Stable**, **ETH**, and similar | The category of the asset you deposit. |
+
+The rules behind these badges are explained for campaign creators in [Campaign Modes](/campaigns/campaign-modes).
+
+## The Campaign Panel
+
+Click a row to open the campaign.
+
+<Frame>
+  <img src="/images/rabbithole/campaign-detail-lido.jpg" alt="Campaign panel for Lido Earn USD showing a 16.04% capped APY, Deposit on Ethereum and Earn on Base, days remaining, participants, TVL and TVE, remaining rewards, a campaign leaderboard, and a notice that only deposits via Rabbithole earn rewards." />
+</Frame>
+
+- **APY** with a note on whether it is capped or fixed.
+- **Deposit on / Earn on** are the two chains involved. You deposit into the protocol on the first and claim rewards on the second. They are often the same chain, but not always.
+- **Ends in** and **Participants**.
+- **TVL** is the total value in the underlying protocol. **TVE** is the total value earned through this campaign so far.
+- **Remaining Rewards** is how much of the budget has not been paid out yet.
+- **Campaign Leaderboard** shows the top earners in this campaign specifically.
+- **Only deposits via Rabbithole earn rewards** appears on campaigns with [earning activation](/campaigns/earning-activation). Your first deposit has to go through Rabbithole to count. After that you can add, withdraw, or move the position any way you like.
+- **Details** expands the campaign description.
+- **View on** links to the protocol's own site. **Share on X** posts a link that carries your referral code.
+
+## Depositing
+
+Press **Deposit** to open the deposit sheet.
+
+<Frame>
+  <img src="/images/rabbithole/deposit-form.jpg" alt="Deposit sheet with an amount input, an ETH token selector showing wallet balance, a Swap + Deposit fee estimate, a notice that the wallet will be switched to Ethereum, and a Deposit button labelled as the first deposit to this campaign." />
+</Frame>
+
+- **Amount** with 25 / 50 / 75 / MAX shortcuts.
+- **Token selector** lets you deposit any supported token in your wallet. If the campaign needs a different asset, the deposit swaps for you in the same transaction.
+- **Swap + Deposit fee** is the estimated network cost.
+- If your wallet is on a different network, Rabbithole switches it for you when you confirm.
+
+When the transaction confirms, the protocol's receipt token (vault shares, LP tokens, and so on) lands in your wallet and rewards start accruing.
+
+<Note>
+  You can also deposit directly on the protocol's site, but on campaigns marked **Only deposits via Rabbithole earn rewards** those deposits will not earn. When in doubt, deposit through Rabbithole.
+</Note>
+
+## Watching Rewards Accrue
+
+There is nothing to do after depositing. Your live earnings counter starts moving, and the APY adjusts as other people enter and leave. If you withdraw part of the position your rate drops proportionally. If you withdraw everything, accrual stops, but every reward you have already earned stays in your balance and remains claimable.
+
+## Claiming
+
+Rewards become claimable a short while after you start earning and then at regular intervals as the campaign publishes snapshots onchain. When a campaign has rewards ready, its row shows a **Claim** button, and the campaign panel shows the amount.
+
+<Frame>
+  <img src="/images/rabbithole/claim-modal.png" alt="Campaign panel marked Campaign ended. The Claim section shows the reward amount in USDC on the Base network, a network fee preview, and a Claim rewards button." />
+</Frame>
+
+- **Reward amount** is everything published and not yet claimed, in the campaign's reward token.
+- **Network fee** is the gas estimate for the claim, refreshed periodically.
+- **Claim rewards** submits the transaction on the **Earn on** chain and sends the tokens to your wallet.
+
+Claims are cumulative. Claiming today and again next month pays exactly the same total as claiming once at the end, so batch claims if you want to save on gas.
+
+<Warning>
+  Campaigns close their claim window some time after they end, usually 60 days. Rewards not claimed by then go back to the campaign creator. The campaign panel shows the deadline once a campaign has ended.
+</Warning>
+
+## Withdrawing
+
+Withdraw from the protocol directly, the same way you would if Rabbithole were not involved. Rabbithole reads your balance from the chain, so it notices the change automatically. Withdrawing does not claim your rewards. Those stay claimable until the campaign's claim window closes.

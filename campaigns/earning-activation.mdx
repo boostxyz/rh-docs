@@ -1,0 +1,86 @@
+---
+title: "Earning Activation"
+description: "Limit campaign rewards to users who entered the position through Boost"
+---
+
+A standard campaign rewards anyone holding the target position. **Earning Activation** is an optional campaign control that limits rewards to users who entered the position through Boost — usually through [rabbithole.gg](https://rabbithole.gg) or another Boost-aware integration.
+
+The mechanism is opt-in. A user's first deposit routes through a Boost contract, which records a one-time activation signal. From that moment on, every action that user takes — deposits, withdrawals, transfers — counts toward rewards in the normal way. They don't have to keep using Boost after activation.
+
+For users on rabbithole.gg, this happens automatically. The frontend routes deposits through the Boost contract behind the scenes; the user just sees a normal deposit flow.
+
+## When to Use It
+
+<CardGroup cols={2}>
+  <Card title="Reward real users" icon="users">
+    Without it, anyone holding the target token earns — including users who arrived through other apps, integrations, or coincidence. Earning Activation focuses the budget on users you actually attracted.
+  </Card>
+
+  <Card title="Track which deposits came through Boost" icon="chart-line">
+    The activation signal doubles as a clean attribution record — a way to see how much capital arrived through Boost versus through other paths.
+  </Card>
+
+  <Card title="Exclude protocol contracts and wrappers" icon="shield">
+    Some receipt tokens end up in protocol contracts that have no real "user" behind them — wrappers, lending markets using the token as collateral, integrations. Without activation, they'd accrue rewards no one can claim.
+  </Card>
+
+  <Card title="Keep an open campaign open" icon="door-open">
+    Pair it with open eligibility for a campaign that anyone can join — but only if they actually arrive through Boost.
+  </Card>
+</CardGroup>
+
+## How It Works
+
+### For users
+
+The flow is the same as any normal deposit, with one difference under the hood:
+
+1. The user goes to their preferred entry point (rabbithole.gg or any Boost-aware integration).
+2. They deposit into the eligible position. The deposit routes through Boost and emits an activation signal in the same transaction.
+3. From that moment on, the user accrues rewards normally — just like a non-gated campaign.
+4. They can withdraw, top up, or transfer the position any way they want from then on. They don't need to use Boost again.
+
+Cross-chain entry is supported too — a user can deposit from another chain and have it routed through Boost into the target position.
+
+### For protocols
+
+A campaign config carries an "Earning Activation required" flag. When set:
+
+- Users who route their first deposit through Boost are eligible to earn.
+- Users who never route through Boost never get a position for this campaign — their balance changes are skipped entirely.
+- Pre-existing holders aren't retroactively activated. If they held the target token before the campaign launched, they need to do a fresh deposit through Boost (or hold elsewhere — if they want in, they need to activate).
+
+## What It Does Not Do
+
+A few common assumptions that aren't quite right:
+
+- **It doesn't restrict withdrawals.** Once activated, users can exit any way they want — direct withdrawal from the protocol, transfer to another address, etc.
+- **It doesn't require Boost for every deposit.** Activation is a one-time event. Subsequent deposits via any path count toward the user's balance.
+- **It doesn't lock receipt tokens to one address.** Receipt tokens (vault shares, aTokens, etc.) move freely. Only the activated user accrues rewards on their position.
+- **It doesn't change the reward math.** Modes, eligibility, lifecycle, and snapshots all run exactly as they would for a non-gated campaign.
+
+## How It Composes
+
+Earning Activation is a separate axis from the other campaign controls:
+
+- **Eligibility** (open / allowlist / verified) describes *who* is allowed to earn. Activation describes *how they opt in*. They stack — a campaign can require both.
+- **Modes** (caps, tiers, fixed APY, etc.) operate on the eligible balance after activation has happened. They don't care how the user activated.
+
+A campaign can run open eligibility with Earning Activation, allowlist with Earning Activation, allowlist with no activation, and so on. Mix as needed.
+
+## Keep Exploring
+
+<CardGroup cols={2}>
+  <Card title="Campaign Modes" icon="sliders" href="/campaigns/campaign-modes">
+    The reward-shaping rules — caps, tiers, fixed APY, and more — that run on top of activated balances.
+  </Card>
+  <Card title="Reward Calculation" icon="calculator" href="/campaigns/reward-calculation">
+    How eligible balance and time held translate into rewards.
+  </Card>
+  <Card title="Campaign Lifecycle" icon="clock-rotate-left" href="/campaigns/campaign-lifecycle">
+    The phases a campaign moves through from setup to claim window close.
+  </Card>
+  <Card title="Launch a Campaign" icon="rocket" href="/campaigns/launch-a-campaign">
+    What it looks like to bring a campaign live with the Boost team today.
+  </Card>
+</CardGroup>

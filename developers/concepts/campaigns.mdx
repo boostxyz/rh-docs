@@ -1,0 +1,170 @@
+---
+title: "Campaigns, IDs, and Chains"
+description: "The compound campaign key, event versus reward chains, lifecycle status, and what discovery returns"
+---
+
+This page covers the domain model behind the API types, enough to read any response correctly before you write a line of integration code. For the reward math itself, see [Reward Calculation](/campaigns/reward-calculation).
+
+## Campaign Identity
+
+A campaign is identified by a **compound key**, not a single scalar ID:
+
+```ts
+const id = { chainId: 8453, campaignIndex: 56 };
+```
+
+In URL paths and query strings the key serializes to `"chainId:campaignIndex"`, so `{ chainId: 8453, campaignIndex: 56 }` becomes `"8453:56"`. The SDK does that conversion for you; every method takes the object form.
+
+```ts
+await tbi.campaigns.get({ chainId: 8453, campaignIndex: 56 });
+// GET /v1/campaigns/8453:56
+```
+
+<Warning>
+  There is no string overload. Passing `"8453:56"` to an SDK method will not typecheck. Always pass `{ chainId, campaignIndex }`.
+</Warning>
+
+Each campaign also exposes `configHash`, the keccak256 commitment of its configuration that was submitted on-chain. If you want to verify a campaign's parameters independently, recompute the hash and compare.
+
+## Event Chain Versus Reward Chain
+
+Two chains matter for every campaign, and confusing them is the most common integration bug.
+
+|  | Field | What lives there |
+| --- | --- | --- |
+| **Event chain** | `campaign.eventChainId`, `campaign.target.chainId` | The vault, pool, or token position being tracked |
+| **Reward chain** | `campaign.id.chainId` | The TBI Manager contract, where claims are submitted |
+
+They are the same for most campaigns. They differ for cross-chain campaigns, such as positions tracked on Polygon with rewards claimed on Worldchain.
+
+The operating rule:
+
+- **Filtering campaigns by vault or pool address?** Use the event chain.
+- **Connecting a wallet to claim?** Use the reward chain.
+
+```ts
+// Find campaigns for a vault on Base (event chain)
+const { data } = await tbi.campaigns.active({
+  target: { chainId: 8453, address: vaultAddress },
+});
+
+// Claim on whatever chain the campaign pays on (reward chain)
+const claimChainId = data[0].id.chainId;
+```
+
+## Lifecycle and Claimability
+
+| Status | Meaning | Accruing? |
+| --- | --- | --- |
+| `draft` | Configured but not committed on-chain. Reserved; the API does not return it today | No |
+| `pending` | Created on-chain, before `startTime` | Not yet |
+| `active` | Between `startTime` and `endTime` | Yes |
+| `ended` | Past `endTime`, or ended early on-chain | No |
+| `finalized` | The final merkle root is published; all earned rewards are settled | No |
+| `cancelled` | Terminated early | No |
+
+<Warning>
+  **Claimability is governed by published merkle roots, not by status.** Rewards become claimable when a root covering them is published on the reward chain, which happens periodically while a campaign runs, not only at the end. Never gate a claim button on `status === "active"`: `ended` campaigns stay claimable, and `finalized` means everything earned is claimable. Gate on `claimable > 0n` and let the amount decide.
+</Warning>
+
+For the business-facing view of these phases (what a creator can change in each, and when budget becomes recoverable), see [Campaign Lifecycle](/campaigns/campaign-lifecycle).
+
+## Reading Accrual From the API
+
+Rewards are computed off-chain by Boost's indexers from on-chain events. You never reproduce the math; you read a field.
+
+| To show | Field | Read from |
+| --- | --- | --- |
+| Counted balance | `balance` | `rewards.forUser`; `campaigns.get`/`list` via `userPosition` (pass `userAddress`) |
+| Total earned so far | `accumulatedRewards` | `rewards.forUser`; `userPosition` |
+| Claimable right now | `claimable` | `claims.get`; `claims.statuses` |
+| When the user started | `triggeredAt` | `userPosition` (pass `userAddress`) |
+| Whether they are eligible | `isEligible` | `userPosition` (pass `userAddress`) |
+| Campaign size | `tvl`, `participants` | `campaigns.stats` |
+
+Two properties of the accrual engine matter when you build a UI:
+
+- **Earnings are continuous and already exact.** `accumulatedRewards` reflects every second up to the latest on-chain event or price checkpoint. There is no per-second feed to poll.
+- **There is no retroactive credit.** Time a user was not holding is time they did not accumulate, which is why, at equal size, an earlier holder out-earns a later one.
+
+<Note>
+  For priced targets such as prediction-market shares or LP positions, `balance` is the position's **value**, not its raw token count, and it drifts with price checkpoints even when the user does not trade. Plain ERC-20 targets count raw token units.
+</Note>
+
+## Modes as Data
+
+`campaign.modes` is a keyed object. A key is present only when that mode is enabled, and `{}` means a plain pro-rata campaign. Modes compose, so a campaign can carry several at once.
+
+| Mode | Fields | Effect |
+| --- | --- | --- |
+| `fixedApy` | `rateBps` | Pays at a fixed target APY instead of splitting a fixed emission rate |
+| `apyCap` | `capRateBps` | Caps the effective APY the campaign will pay |
+| `earningCap` | `maxRewards` | Per-address ceiling on total rewards earned |
+| `capitalCap` | `maxTotalBalance` / `maxTotalBalanceUsd` | Campaign-wide ceiling on counted balance |
+| `depositCap` | `maxBalance` / `maxBalanceUsd` | Per-user ceiling on counted balance |
+| `cliff` | `cliffDurationSeconds`, `buffer` | Hold-or-forfeit. See [How Claiming Works](/developers/concepts/claiming#cliff-state-on-proofs) |
+| `minBalance` | `minBalance` / `minBalanceUsd` | Eligibility floor; positions below it earn nothing |
+| `depositTiers` | `tiers[]` (`minBalance`, `multiplier`) | Reward multipliers by balance tier |
+| `newCapitalOnly` | `snapshotBlock` | Only balance added after the snapshot block earns. New campaigns are ERC-20 only, but existing Uniswap v4 campaigns still carry it, so handle it on any target |
+| `participantCap` | `maxParticipants` | Caps how many users can participate |
+| `includeExistingPositions` | none (empty object) | Enrolls all pool positions existing at activation, no user action required. Uniswap v4 LP campaigns only |
+
+**Units.** `*Bps` fields are basis points (`1250` = 12.5%). `*Usd` fields are USD with 6 decimals. Bare balance fields are raw target-token units. `earningCap.maxRewards` is the exception: it caps *rewards*, so it is denominated in reward-token units.
+
+For what each mode is *for* (the campaign-design view rather than the data view), see [Campaign Modes](/campaigns/campaign-modes).
+
+## Targets
+
+`campaign.target` describes the position being tracked. Its shape varies by `tokenStandard`, and **fields that do not apply to a standard are omitted entirely rather than set to `null`**:
+
+| `tokenStandard` | Key fields | Typical target |
+| --- | --- | --- |
+| `ERC20` | `address`, `decimals`, `symbol` | A vault share token, staked balance, or plain token |
+| `UniswapV4LP` | `poolId`, `poolManager`, `token0`, `token1`, `shareModel` | A Uniswap v4 pool position |
+| `Polymarket` | `address`, `tokenId` | A prediction-market outcome share |
+| `Forkast` | `address`, `tokenId` | A prediction-market outcome share |
+
+Match on `target.address` for ERC-20 style targets and on `target.poolId` for Uniswap v4 pools.
+
+`shareModel` on a v4 target says how an LP's slice is computed. Treat it as an open string rather than a closed set:
+
+| Value | Meaning |
+| --- | --- |
+| `fees` | Rewards split by share of fee-generating liquidity. The most common value on live campaigns |
+| `tvl` | Split by the USD value of the position |
+| `weighted` | Blends active liquidity and token amounts |
+
+<Warning>
+  The SDK type currently narrows `shareModel` to `"weighted" | "tvl"`, but the API returns `"fees"` on live v4 campaigns. Do not write an exhaustive switch over it; fall through on values you do not recognise.
+</Warning>
+
+## What Discovery Returns
+
+`campaigns.list` and `campaigns.active` **exclude campaigns that require a Forwarder deposit** unless you pass `includeForwarderRequired: true`. That keeps integrations from surfacing campaigns their users cannot earn from. `campaigns.get` returns any campaign regardless of the flag.
+
+```ts
+const { data } = await tbi.campaigns.active({
+  target: { chainId: 8453, address: vaultAddress },
+  includeForwarderRequired: true,
+});
+```
+
+Discovery also omits some internal Boost-operated campaigns from browse results.
+
+<Note>
+  This is a **visibility convention for partner discovery, not an authorization boundary.** If you already have a campaign ID, `campaigns.get` and `campaigns.stats` still work, and `rewards.forUser` and `claims.get` still return that user's financial data.
+</Note>
+
+## Keep Exploring
+
+<CardGroup cols={3}>
+  <Card title="How Claiming Works" href="/developers/concepts/claiming">
+    Merkle roots, cumulative amounts, and the three reward numbers.
+  </Card>
+  <Card title="Data Conventions" href="/developers/concepts/data-conventions">
+    Wire formats, bigint amounts, and pagination.
+  </Card>
+  <Card title="Forwarder Deposits" href="/developers/guides/forwarder-deposits">
+    Routing deposits for campaigns that require them.
+  </Card>
+</CardGroup>

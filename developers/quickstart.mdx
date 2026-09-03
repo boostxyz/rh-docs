@@ -1,0 +1,212 @@
+---
+title: "Quickstart"
+description: "Discover a campaign, show a user what they've earned, and submit a claim, in five steps"
+---
+
+This is the shortest path from nothing to a working integration: install, create a client, find the campaign rewarding your vault or pool, read what a user has earned, and claim it. Each step links to the page where the full detail lives.
+
+New to campaigns? Read the [Developer Overview](/developers/overview) first for access and the wider product surface. This page covers the discover-read-claim flow specifically.
+
+<Note>
+  There is no API key. Every call below works against the public API as written. The only thing you may want first is a partner `refId` for attribution.
+</Note>
+
+## Prerequisites
+
+1. **A live campaign** on a vault, pool, or token you care about. Campaigns are set up with the Boost team (see [Launch a Campaign](/campaigns/launch-a-campaign)).
+2. **Node 18+** or any runtime with a global `fetch`, and `viem` for the claim step.
+3. **Optionally, a partner `refId`** so Boost can attribute your traffic. Ask the Boost team to register one.
+
+## The Mental Model in 30 Seconds
+
+Two things explain most of the API:
+
+- **Two chains per campaign.** Positions are tracked on the **event chain** (`target.chainId`); claims are submitted on the **reward chain** (`id.chainId`). They match for most campaigns and differ for cross-chain ones. Filter by the event chain, connect wallets to the reward chain.
+- **Earned is not claimable.** Rewards accrue continuously, but they only become claimable once a merkle root covering them is published on-chain. Show `accumulatedRewards` in the earnings row; drive the button off `claims.get().claimable`.
+
+Full detail in [Campaigns, IDs, and Chains](/developers/concepts/campaigns) and [How Claiming Works](/developers/concepts/claiming).
+
+## Step 1: Install
+
+<CodeGroup>
+```bash title="npm"
+npm install @boostxyz/tbi-sdk viem
+```
+
+```bash title="pnpm"
+pnpm add @boostxyz/tbi-sdk viem
+```
+</CodeGroup>
+
+`viem` is a peer dependency (`>=2.21.3 <3`) because the claim helpers accept a viem `WalletClient`. Prefer raw REST? Every step below shows the underlying endpoint. See the [API reference](/api-reference/introduction).
+
+## Step 2: Create a Client
+
+```ts
+import { createTbiClient } from "@boostxyz/tbi-sdk";
+
+const tbi = createTbiClient({ refId: "your_partner_id" });
+```
+
+The client is frozen and immutable, so create it once at module scope and share it. `refId` is sent as the `x-boost-ref-id` header on every request; it is attribution, not authentication. Omit it and everything still works.
+
+Full configuration in the [SDK reference](/developers/sdk#create-a-client).
+
+## Step 3: Find a Campaign
+
+Look up active campaigns rewarding the position you care about. Match on the **event chain** and the target address.
+
+<CodeGroup>
+```bash title="curl"
+curl "https://api-tbi.boost.xyz/v1/campaigns/active?targetChainId=8453&targetAddress=0xYOUR_VAULT"
+```
+
+```ts title="TypeScript"
+const { data } = await tbi.campaigns.active({
+  target: { chainId: 8453, address: vaultAddress },
+});
+
+const campaign = data[0];
+if (!campaign) return; // no live campaign for this vault
+```
+</CodeGroup>
+
+For a Uniswap v4 pool, match on `target.poolId` instead of the address. To browse rather than look up, use `campaigns.list` with `chainId` and `status` filters.
+
+<Note>
+  Discovery hides campaigns that require a Forwarder deposit unless you pass `includeForwarderRequired: true`. If your integration routes deposits through the Forwarder, opt in. See [Forwarder Deposits](/developers/guides/forwarder-deposits).
+</Note>
+
+## Step 4: Show What They've Earned
+
+<CodeGroup>
+```bash title="curl"
+curl "https://api-tbi.boost.xyz/v1/users/0xUSER/rewards?chainId=8453"
+```
+
+```ts title="TypeScript"
+import { formatUnits } from "viem";
+
+// chainId here is the REWARD chain, which is not necessarily the chain you
+// filtered by in Step 3.
+const rewards = await tbi.rewards.forUser(userAddress, {
+  chainId: campaign.id.chainId,
+});
+
+const row = rewards.data.find(
+  (r) =>
+    r.id.chainId === campaign.id.chainId &&
+    r.id.campaignIndex === campaign.id.campaignIndex,
+);
+
+const earned = row
+  ? formatUnits(row.accumulatedRewards, row.rewardToken.decimals)
+  : "0";
+```
+</CodeGroup>
+
+<Warning>
+  `chainId` on this call filters by the **reward** chain, not the event chain you searched on in Step 3. Passing the event chain returns nothing for cross-chain campaigns, and a `campaignIndex` match alone can collide across chains. Filter and match on the full `campaign.id`.
+</Warning>
+
+`accumulatedRewards` is the lifetime accrual, the number that ticks up. It is **not** the claimable number. Only campaigns the user has already entered appear here; to find campaigns they *could* earn from, call `campaigns.list` with `userAddress`.
+
+## Step 5: Claim
+
+Fetch the proof, guard the obvious failure modes, then submit. `tbi.claim` will fetch the proof itself if you omit it, but fetching first lets you check `claimable` before prompting a wallet.
+
+```ts
+const proof = await tbi.claims.get(campaign.id, userAddress);
+
+if (proof.claimable === 0n) {
+  // Nothing published yet, or already fully claimed.
+  return;
+}
+if (walletClient.chain?.id !== campaign.id.chainId) {
+  throw new Error(`Switch the wallet to chain ${campaign.id.chainId} to claim`);
+}
+
+const { hash } = await tbi.claim({
+  walletClient,
+  id: campaign.id,
+  address: userAddress,
+  proof,
+});
+```
+
+The reward goes to `address` no matter who sends the transaction, so relayer and account-abstraction flows work with no special handling.
+
+<Warning>
+  A 404 from `claims.get` is usually a normal state, not a failure: the user has no position in the campaign, or no published root covers their rewards yet. It also returns 404 once the **claim window has closed**, so check the campaign's schedule before rendering an accruing state. See [Errors](/developers/errors).
+</Warning>
+
+## Put It Together
+
+A complete vault-to-claim flow:
+
+```ts
+import { createTbiClient, TbiNotFoundError, type Address } from "@boostxyz/tbi-sdk";
+import { formatUnits, type WalletClient } from "viem";
+
+const tbi = createTbiClient({ refId: "your_partner_id" });
+
+export async function claimVaultRewards(
+  walletClient: WalletClient,
+  user: Address,
+  vault: { chainId: number; address: Address },
+) {
+  // 1. Find an active campaign rewarding this vault.
+  const { data: campaigns } = await tbi.campaigns.active({ target: vault });
+  const campaign = campaigns[0];
+  if (!campaign) {
+    return { status: "no-campaign" as const };
+  }
+
+  // 2. Read what the user has earned. Claims happen on the reward chain.
+  //    A 404 here is normal: no position, no published root yet, or the claim
+  //    window has closed.
+  let proof;
+  try {
+    proof = await tbi.claims.get(campaign.id, user);
+  } catch (e) {
+    if (e instanceof TbiNotFoundError) {
+      return { status: "nothing-claimable" as const };
+    }
+    throw e;
+  }
+  const { rewardToken } = proof;
+  const earned = formatUnits(proof.claimable, rewardToken.decimals);
+  if (proof.claimable === 0n) {
+    return { status: "nothing-claimable" as const };
+  }
+
+  // 3. Claim. The wallet must be connected to the reward chain.
+  if (walletClient.chain?.id !== campaign.id.chainId) {
+    return { status: "wrong-chain" as const, rewardChainId: campaign.id.chainId };
+  }
+  const { hash } = await tbi.claim({
+    walletClient,
+    id: campaign.id,
+    address: user,
+    proof,
+  });
+  return { status: "claimed" as const, amount: earned, symbol: rewardToken.symbol, hash };
+}
+```
+
+## What's Next
+
+<CardGroup cols={2}>
+  <Card title="Display Campaign Stats" href="/developers/guides/display-campaign-stats">
+    Show a live APR next to your pool: one request, no wallet needed.
+  </Card>
+  <Card title="Show User Rewards" href="/developers/guides/show-user-rewards">
+    Earned versus claimable, and every UI state in between.
+  </Card>
+  <Card title="Claim Rewards" href="/developers/guides/claim-rewards">
+    Simulating, batching, gas sponsorship, and non-viem stacks.
+  </Card>
+  <Card title="TypeScript SDK" href="/developers/sdk">
+    The full client surface, configuration, and wagmi integration.
+  </Card>
+</CardGroup>

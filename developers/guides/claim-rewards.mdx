@@ -1,0 +1,183 @@
+---
+title: "Claim Rewards"
+description: "Submit the claim from your own UI, with viem or from any stack using raw calldata"
+---
+
+Claiming is a single contract call. You do not need to host anything, custody anything, or send users to another app. This guide covers the full flow, the batch case, and the stacks that do not use viem.
+
+## The Flow
+
+1. **Fetch** the merkle proof for the user and campaign.
+2. **Gate** the button on `claimable > 0n` and the correct wallet chain.
+3. **Simulate** to catch reverts before asking for a signature.
+4. **Submit** and update your state from the receipt.
+
+## Fetch the Proof
+
+<CodeGroup>
+```bash title="curl"
+curl https://api-tbi.boost.xyz/v1/claims/8453:56/0xUSER
+```
+
+```ts title="TypeScript"
+const proof = await tbi.claims.get({ chainId: 8453, campaignIndex: 56 }, userAddress);
+```
+</CodeGroup>
+
+What the SDK hands back:
+
+```ts
+{
+  cumulativeAmount: 37929802521820n,  // lifetime total, pass verbatim on-chain
+  alreadyClaimed:   0n,
+  claimable:        37929802521820n,  // cumulativeAmount - alreadyClaimed
+  proof: ["0x74b8a54d…", "0xf5c3da3e…", "…"],
+  root:  "0x05b105e3…",
+  publishedAt: new Date("2026-08-05T12:05:22.000Z"),
+  cliffPositions: null,
+  cliffBreak: null,
+}
+```
+
+The raw endpoint returns those amounts as decimal strings and `publishedAt` as unix seconds. The SDK parses both. Skip the SDK and you own that conversion. See [Data Conventions](/developers/concepts/data-conventions).
+
+## Gate the Button
+
+```ts
+const canClaim =
+  proof !== null &&
+  proof.claimable > 0n &&
+  walletClient.chain?.id === campaign.id.chainId;
+```
+
+<Warning>
+  Do not gate on `campaign.status`. Accrual stops when a campaign is `ended` or `cancelled`, but rewards already published in a root stay claimable, and `finalized` means every earned reward is claimable. Gate on the amount and let it decide.
+</Warning>
+
+Remember the wallet must be on the **reward chain** (`campaign.id.chainId`), which is not necessarily where the position lives.
+
+## Simulate First
+
+```ts
+const sim = await tbi.claim.simulate({ walletClient, id: campaign.id, address: userAddress });
+
+if (!sim.willSucceed) {
+  console.error(sim.revertReason);
+  return;
+}
+```
+
+`simulate` runs an `eth_call` and asks for no signature, so it is safe to call on render or on hover. It costs one RPC round trip and turns an on-chain revert into a message you can act on. The revert reasons are listed in [Contracts](/developers/contracts#revert-selectors).
+
+## Submit With viem
+
+```ts
+import { createWalletClient, custom } from "viem";
+import { base } from "viem/chains";
+
+const walletClient = createWalletClient({
+  account: userAddress,
+  chain: base,              // required: the SDK asserts chain.id === id.chainId
+  transport: custom(window.ethereum),
+});
+
+const { hash } = await tbi.claim({
+  walletClient,
+  id: campaign.id,
+  address: userAddress,
+  proof,
+});
+```
+
+`tbi.claim` returns as soon as the transaction is broadcast; it does not wait for confirmation. Omit `proof` and the SDK fetches it for you, but fetching first lets you check `claimable` before prompting a wallet.
+
+## After the Claim
+
+<Warning>
+  **Do not re-read `claims.get()` to refresh state after a successful claim.** The API is served from short caches and can trail the chain by a few minutes, so it may still report the full amount as claimable while the contract has already paid it. A second click in that window reverts with `NothingToClaim()`.
+</Warning>
+
+Mark the campaign claimed client-side once you have a transaction receipt, and let the next natural refresh pick up the settled state. If you need the authoritative answer immediately, read it from the chain. See [Reading claim state on-chain](/developers/contracts#reading-claim-state-on-chain).
+
+## Claim Several Campaigns at Once
+
+A user with positions in several campaigns on the same reward chain can claim them in one transaction through Multicall3.
+
+```ts
+const result = await tbi.claimAll({
+  walletClient,
+  address: userAddress,
+  chainId: 8453,
+});
+
+result.hash;
+result.claimed; // [{ id, amount }, …]
+```
+
+Pass `chainId` to let the SDK find every campaign with claimable rewards on that chain, or pass explicit `ids` when you want control over the set:
+
+```ts
+const result = await tbi.claimAll({
+  walletClient,
+  address: userAddress,
+  ids: [
+    { chainId: 8453, campaignIndex: 56 },
+    { chainId: 8453, campaignIndex: 100 },
+  ],
+});
+```
+
+`claimAll` drops zero-claimable proofs and rejects batches spanning multiple reward chains. It is **all or nothing**: one failing subcall reverts the whole transaction. If you would rather have partial success, loop `tbi.claim()` per campaign.
+
+## Non-viem Stacks
+
+`encodeClaim` returns plain calldata and touches no wallet.
+
+```ts
+const { to, data, value } = tbi.encodeClaim({ id: proof.id, proof });
+```
+
+<CodeGroup>
+```ts title="ethers"
+await signer.sendTransaction({ to, data, value });
+```
+
+```ts title="Gnosis Safe"
+await safeSdk.createTransaction({
+  transactions: [{ to, data, value: value.toString() }],
+});
+```
+
+```ts title="Account abstraction"
+await smartAccount.sendUserOperation({ calls: [{ to, data, value }] });
+```
+
+```tsx title="wagmi"
+const { sendTransaction } = useSendTransaction();
+sendTransaction({ to, data, value });
+```
+</CodeGroup>
+
+Use `encodeClaimAll({ proofs })` for the batch equivalent. You still install `viem` for its types, but you never construct a wallet client.
+
+## Sponsor Gas
+
+The claim function pays its `user` argument, not `msg.sender`. That means you can submit claims through your own relayer and cover the gas without ever holding user rewards. Nothing in the SDK or the contract blocks it. Build the calldata with `encodeClaim` and send it from your own signer.
+
+## Gas Expectations
+
+A claim with a five-node merkle proof measured **132,443 gas**. Proof length grows with the number of participants, so treat that as a reference point rather than a fixed cost.
+
+## Keep Exploring
+
+<CardGroup cols={3}>
+  <Card title="How Claiming Works" href="/developers/concepts/claiming">
+    Merkle roots, cumulative amounts, and cliff state.
+  </Card>
+  <Card title="Contracts" href="/developers/contracts">
+    The claim signature and every revert selector.
+  </Card>
+  <Card title="Errors" href="/developers/errors">
+    Which errors to catch and which retry themselves.
+  </Card>
+</CardGroup>

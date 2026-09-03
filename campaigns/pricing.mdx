@@ -1,0 +1,140 @@
+---
+title: "Pricing"
+description: "How campaigns are charged, what users pay, and what happens to budget nobody claims"
+---
+
+Campaign fees are **deducted from the reward budget you deposit**. You do not send extra tokens to cover them, and there is no invoice to settle later. The fee comes out of the budget itself, at the moment it is funded.
+
+<Note>
+  Campaigns are not self-serve. Every campaign is scoped and deployed with the Boost team, and commercial terms are agreed as part of that conversation. See [Launch a Campaign](/campaigns/launch-a-campaign).
+</Note>
+
+<Warning>
+  **Rates under review.** The fee ladder and commitment discount below are the proposed pricing and have not been finalized. Confirm current terms with the team before relying on a number here.
+</Warning>
+
+## What It Costs
+
+**Standard campaign fee: 10%** of the reward budget, taken when the budget is funded.
+
+That is the rate a campaign pays by default. Larger programs pay less, on a degressive scale.
+
+### Degressive Fee Structure
+
+The more you distribute, the lower your effective rate. Tiers are calculated on the total distributed across all campaigns associated with your entity, not per campaign, so a series of smaller campaigns reaches the same tiers as one large one.
+
+| Cumulative distributed | Rate |
+| --- | --- |
+| First $1M | 10% |
+| $1M to $2.5M | 5% |
+| $2.5M to $5M | 3.5% |
+| Above $5M | 2.5% |
+
+<Note>
+  **Example.** Distribute $3M in total and you pay 10% on the first $1M ($100k), 5% on the next $1.5M ($75k), and 3.5% on the final $500k ($17.5k), for $192.5k in total: an effective rate of 6.4%.
+</Note>
+
+### Commit Upfront for a Discount
+
+If you are planning a program rather than a one-off campaign, committing upfront earns a **25% reduction** on the fees for that commitment.
+
+Commit to campaigns distributing at least **$500k** in total incentives, pay the fees for that volume in advance, and the discount applies across the whole commitment. It stacks with the degressive tiers: the reduction is applied to whatever rate the tiers put you on.
+
+<Note>
+  A $3M commitment pays $192.5k at the standard ladder, or **$144.4k** with the 25% commitment discount: an effective rate of 4.8%.
+</Note>
+
+<Warning>
+  **Rates are agreed before deployment.** Campaigns are not self-serve, so the ladder above is the starting point for a conversation rather than a checkout page. Whatever is agreed is fixed at campaign creation and does not change once the campaign is live. [Talk to the team on Discord](https://discord.gg/JTCqaekdm) about commitment terms.
+</Warning>
+
+## Distribution and the Raffle
+
+Campaigns running on Boost can be surfaced on [rabbithole.gg](https://rabbithole.gg), where users browse live earning opportunities. **There is no placement fee.** Being listed, appearing in the activity feed, and feeding into the monthly raffle all cost nothing on top of your campaign fee.
+
+What that adds for you is a second incentive layer your budget does not pay for:
+
+- **Discovery.** Your campaign sits alongside every other live opportunity, in front of users who are already there to deposit.
+- **Activity surfacing.** Notable deposits, claims, and leaderboard moves in your campaign appear in the feed, which is social proof you did not have to buy.
+- **The monthly raffle.** Users who claim rewards climb a leaderboard and earn raffle tickets toward a monthly prize. Someone earning in your campaign is also earning raffle entries, so the reason to deposit is larger than your APY alone.
+
+<Note>
+  The raffle prize is funded by Boost out of the protocol fee, not from your campaign budget. Your participants get the extra pull at no cost to your program, and your reward budget pays out exactly as configured.
+</Note>
+
+<Warning>
+  **Subject to availability.** Placement is curated, not automatic. Surfaces are limited, the raffle runs on its own schedule, and featuring is agreed per campaign rather than guaranteed by running one. Raise it when you scope the campaign if it matters to your launch plan.
+</Warning>
+
+## What Users Pay
+
+Nothing. Earning and claiming are free for participants.
+
+A user pays their own gas to claim, and nothing else. Boost takes no cut of a user's rewards, charges no claim fee, and never has custody of a user's principal, which stays in the underlying protocol or vault throughout. See [How It Works](/campaigns/how-it-works).
+
+<Note>
+  If you want to remove even the gas cost, you can submit claims on your users' behalf through your own relayer. The claim function pays the user regardless of who sends the transaction. See [Sponsor gas](/developers/guides/claim-rewards#sponsor-gas).
+</Note>
+
+## How Fees Are Applied
+
+- **Base.** The fee is computed on the reward budget deposited into the campaign, not on TVL, not on the rewards actually claimed.
+- **Timing.** It is taken when the budget is funded, at campaign creation. Not at the end, and not per claim.
+- **Top-ups are charged the same way.** Adding rewards to a live campaign is treated like the original deposit: the fee comes out of the amount you add.
+- **No top-up needed to cover it.** You do not calculate the fee on top and deposit extra. Fund the budget you intend to fund.
+
+Worked example at the standard 10% rate:
+
+| Step | Amount |
+| --- | --- |
+| You deposit | 100,000 USDC |
+| Fee taken at creation | 10,000 USDC |
+| Distributed to users over the campaign | **90,000 USDC** |
+
+You send 100,000 USDC. Users receive 90,000 USDC in total. There is no second transfer.
+
+If you need a specific amount to reach users, size the deposit for it: to distribute 100,000 USDC at 10%, fund about 111,112 USDC (`amount / 0.9`).
+
+### Fees Do Not Rescale Your Campaign
+
+The fee comes out of the budget, but it **does not change the campaign parameters you configured**. Boost tries to sustain the rate you set using the post-fee budget; it does not raise your target to compensate.
+
+<Warning>
+  **Fixed APY campaigns end early when the budget drains.** If you configure a 12% Fixed APY campaign and fund 100,000 USDC, the engine is working with 90,000 USDC. If that cannot sustain 12% for the full schedule, the campaign ends when the budget runs out rather than paying a lower rate. Size the deposit against the distribution you actually want, not the headline number. See [Campaign Modes](/campaigns/campaign-modes).
+</Warning>
+
+The same applies to Capped APY, deposit caps, and tiers: they operate on whatever budget remains after the fee.
+
+## Unspent and Unclaimed Budget
+
+Budget that never reaches a user comes back to you.
+
+| Situation | What happens |
+| --- | --- |
+| Campaign ends with budget undistributed | Recoverable by the creator once the campaign is finalized |
+| Rewards throttled by Capped APY | Held back and recoverable, never forfeited to Boost |
+| Rewards forfeited by a broken cliff | Returned to the recoverable pool |
+| Rewards earned but never claimed | Recoverable after the claim window closes |
+
+The standard claim window is **60 days** after a campaign ends, configurable per campaign. Once it closes, unclaimed rewards become recoverable. See [Campaign Lifecycle](/campaigns/campaign-lifecycle) for the phase this belongs to.
+
+<Note>
+  Recovery is an action you take, not an automatic transfer. The Boost team walks through it when a campaign finalizes.
+</Note>
+
+## Sharing Fees with Distribution Partners
+
+A campaign can route part of the fee to the partners who brought the capital, rather than all of it going to Boost. The on-chain mechanism exists today; the partner-facing surface is still being built.
+
+[▸ReferralsHow the referral split works, what is live on-chain, and what is still to be announced.](/campaigns/referrals)
+
+## Keep Exploring
+
+<CardGroup cols={2}>
+  <Card title="Launch a Campaign" href="/campaigns/launch-a-campaign">
+    What onboarding looks like, and what to bring to the first conversation.
+  </Card>
+  <Card title="Campaign Modes" href="/campaigns/campaign-modes">
+    The controls that shape how much of the budget actually goes out.
+  </Card>
+</CardGroup>

@@ -1,0 +1,186 @@
+---
+title: "TypeScript SDK"
+description: "Install @boostxyz/tbi-sdk, configure a client, and use the full method surface"
+---
+
+`@boostxyz/tbi-sdk` is a framework-agnostic TypeScript SDK that wraps the public [`/v1` API](/api-reference/introduction). It returns SDK-native types (`bigint` amounts, viem `Address` and `Hex`, `Date | null` timestamps) and ships viem-friendly claim helpers.
+
+<Note>
+  V1 does not ship React hooks, Vue or Svelte adapters, or UI components. Use these methods with your framework's data-fetching layer of choice. There is a wagmi and TanStack Query example below.
+</Note>
+
+## Install
+
+<CodeGroup>
+```bash title="npm"
+npm install @boostxyz/tbi-sdk viem
+```
+
+```bash title="pnpm"
+pnpm add @boostxyz/tbi-sdk viem
+```
+
+```bash title="yarn"
+yarn add @boostxyz/tbi-sdk viem
+```
+
+```bash title="bun"
+bun add @boostxyz/tbi-sdk viem
+```
+</CodeGroup>
+
+The current version is `0.1.0`, published on [npm](https://www.npmjs.com/package/@boostxyz/tbi-sdk). Both ESM and CommonJS builds ship in the package.
+
+### Peer Dependencies
+
+`viem` is a peer dependency because the claim helpers accept a viem `WalletClient` and the exported types use viem's `Address` and `Hex`.
+
+```text
+"viem": ">=2.21.3 <3"
+```
+
+If your app uses ethers, wagmi, or account abstraction, you still install `viem` for its types but never construct a wallet client yourself. See [raw calldata](/developers/guides/claim-rewards#non-viem-stacks).
+
+## Create a Client
+
+```ts
+import { createTbiClient } from "@boostxyz/tbi-sdk";
+
+const tbi = createTbiClient();
+```
+
+The client is frozen and immutable, so it is safe to share as a module-level singleton. Every field of the config is optional and the defaults talk to production.
+
+| Option | Type | Default | Purpose |  |
+| --- | --- | --- | --- | --- |
+| `baseUrl` | `string \ | URL` | `https://api-tbi.boost.xyz` | API origin. Trailing slashes are stripped |
+| `fetch` | `TbiFetch` | `globalThis.fetch` | Custom fetch implementation, required in runtimes without a global `fetch` |  |
+| `headers` | `HeadersInit` | none | Default headers merged into every request |  |
+| `refId` | `string` | none | Partner attribution ID assigned by Boost, sent as the `x-boost-ref-id` header |  |
+| `retry` | `TbiRetryConfig` | `{ attempts: 3, baseDelayMs: 200 }` | Backoff behaviour for transient failures |  |
+
+```ts
+const tbi = createTbiClient({
+  refId: "your_partner_id",
+  retry: { attempts: 5, baseDelayMs: 500 },
+});
+```
+
+### Partner Attribution
+
+When `refId` is set, the SDK sends it on every API request so Boost can attribute SDK, API, and Forwarder usage to your integration. It is **not** authentication and not a secret; the API is public either way.
+
+The SDK validates the value locally: it must start with an alphanumeric character, contain only letters, numbers, `.`, `_`, `:`, or `-`, and be at most 128 characters. Override it per call when you want to split traffic:
+
+```ts
+await tbi.campaigns.active(undefined, { refId: "your_partner_id_experiment" });
+```
+
+See the [Developer Overview](/developers/overview) for how to get a `refId` registered.
+
+## Client Surface
+
+| Method | Returns | What it does |
+| --- | --- | --- |
+| `campaigns.list(query?, opts?)` | `CampaignListResponse` | Paginated campaign list with chain, status, target, and user filters |
+| `campaigns.active(query?, opts?)` | `CampaignListResponse` | The same list, pre-filtered to `status: "active"`. The common discovery call |
+| `campaigns.get(id, opts?)` | `Campaign` | One campaign's full configuration, schedule, modes, and target |
+| `campaigns.stats(id, opts?)` | `CampaignStats` | Only the numbers that move: TVL, participants, APY. Cheap to poll |
+| `claims.get(id, address, opts?)` | `ClaimProof` | The merkle proof and amounts a user needs to claim |
+| `claims.statuses(address, ids, opts?)` | `readonly ClaimStatus[]` | Lightweight claimable amounts across up to 100 campaigns |
+| `rewards.forUser(address, query?, opts?)` | `UserRewardsResponse` | Every campaign the user has accrued rewards in |
+| `balances.byAddress(address, opts?)` | `readonly BalanceEntry[]` | The user's token balances across chains |
+| `forwarder.targets(opts?)` | `readonly ForwarderTarget[]` | Every vault and market registered for Forwarder deposits |
+| `forwarder.buildDeposit(args, opts?)` | `ForwarderBuildDepositResponse` | An ordered, unsigned transaction list for a deposit |
+| `claim(args)` | `TbiClaimResult` | Submits one claim with a viem wallet client |
+| `claim.simulate(args)` | `TbiClaimSimulationResult` | Dry-runs the claim via `eth_call`, no signature required |
+| `claimAll(args)` | `TbiClaimAllResult` | Batches claims on one reward chain into a single Multicall3 transaction |
+| `encodeClaim(args)` | `TbiEncodedCall` | Raw `{ to, data, value }` calldata for a single claim, no wallet involved |
+| `encodeClaimAll(args)` | `TbiEncodedCall` | The same for a batch |
+| `transport.request(path, opts?)` | `T` | Escape hatch for `/v1` paths the SDK does not wrap yet |
+
+Every read method takes the same per-call options: `headers`, `refId`, and `signal`.
+
+### The Transport Escape Hatch
+
+`transport` keeps the client's base URL, headers, `refId`, and retry behaviour while letting you call an endpoint the SDK has not wrapped:
+
+```ts
+const raw = await tbi.transport.request("/v1/campaigns/active", {
+  query: { chainId: 8453 },
+});
+
+tbi.transport.buildUrl("/v1/campaigns", { limit: 5 });
+// "https://api-tbi.boost.xyz/v1/campaigns?limit=5"
+```
+
+## Exported Constants
+
+| Constant | Value |
+| --- | --- |
+| `DEFAULT_TBI_API_BASE_URL` | `https://api-tbi.boost.xyz` |
+| `TBI_REF_ID_HEADER` | `x-boost-ref-id` |
+| `TBI_MANAGER_ADDRESS` | The TBI Manager. The same address on every supported reward chain |
+| `MULTICALL3_ADDRESS` | The canonical Multicall3 deployment |
+| `TBI_MANAGER_ABI` | The `claim` function fragment |
+| `MULTICALL3_ABI` | The `aggregate` function fragment |
+
+See [Contracts](/developers/contracts) for the addresses, the claim signature, and the revert selectors.
+
+## Use with wagmi and TanStack Query
+
+```tsx
+import { useQuery } from "@tanstack/react-query";
+import { type Address, type CampaignId, createTbiClient } from "@boostxyz/tbi-sdk";
+import { useAccount, useWalletClient } from "wagmi";
+
+const tbi = createTbiClient();
+
+export function useBoostCampaignForVault(chainId: number, vault: Address) {
+  return useQuery({
+    queryKey: ["tbi", "campaigns", "active", chainId, vault],
+    queryFn: () => tbi.campaigns.active({ target: { chainId, address: vault } }),
+  });
+}
+
+export function ClaimButton({ id }: { id: CampaignId }) {
+  const { address } = useAccount();
+  const { data: wallet } = useWalletClient({ chainId: id.chainId });
+  const disabled = !wallet || !address || wallet.chain?.id !== id.chainId;
+
+  return (
+    <button
+      disabled={disabled}
+      onClick={() => tbi.claim({ walletClient: wallet!, id, address: address! })}
+    >
+      Claim
+    </button>
+  );
+}
+```
+
+<Warning>
+  Responses contain `bigint`. In-memory caches handle that fine, but persisting a TanStack Query or SWR cache to `localStorage` needs a serializer. See [Data Conventions](/developers/concepts/data-conventions#every-amount-is-a-bigint).
+</Warning>
+
+## Types and Reference
+
+Every exported symbol ships with TSDoc, so your editor is the fastest per-field reference. The types are bundled with the package; there is nothing separate to install.
+
+<Note>
+  There is no public changelog page yet. The `/v1` API contract changes additively only; the SDK follows semantic versioning, and `0.1.0` is the only release so far.
+</Note>
+
+## Keep Exploring
+
+<CardGroup cols={3}>
+  <Card title="Quickstart" href="/developers/quickstart">
+    Discover, read, and claim in five steps.
+  </Card>
+  <Card title="Errors" href="/developers/errors">
+    Error classes and what retries automatically.
+  </Card>
+  <Card title="Contracts" href="/developers/contracts">
+    The Manager, the claim function, and revert selectors.
+  </Card>
+</CardGroup>

@@ -1,0 +1,138 @@
+---
+title: "Show User Rewards"
+description: "Earned versus claimable, the UI states in between, and how to format the amounts"
+---
+
+A rewards panel needs two numbers from two different endpoints, and mixing them up is the most expensive mistake in this integration. This guide covers which is which, every state you need to render, and the formatting trap that makes valid rewards look like zero.
+
+## Two Numbers, Two Endpoints
+
+| Row in your UI | Field | Endpoint |
+| --- | --- | --- |
+| "Earned so far" | `accumulatedRewards` | `GET /v1/users/{address}/rewards` |
+| The claim button | `claimable` | `GET /v1/claims/{campaignId}/{address}` |
+
+<Warning>
+  **Only `claims.get()` may drive a claim button.** `accumulatedRewards` tracks live accrual and always runs ahead of what a published merkle root actually covers. A button wired to it over-promises, and the transaction reverts with `InvalidProof()`.
+</Warning>
+
+The two numbers differing is normal, not a bug. See [How Claiming Works](/developers/concepts/claiming#two-clocks). Show the earned figure as the one that moves; show claimable on the button.
+
+## Read Lifetime Earnings
+
+<CodeGroup>
+```bash title="curl"
+curl "https://api-tbi.boost.xyz/v1/users/0xUSER/rewards?chainId=8453"
+```
+
+```ts title="TypeScript"
+const rewards = await tbi.rewards.forUser(userAddress, {
+  chainId: 8453,
+  status: ["active", "finalized"],
+});
+
+const row = rewards.data.find((r) => r.id.campaignIndex === 56);
+row?.accumulatedRewards; // bigint, accrues continuously
+```
+</CodeGroup>
+
+Only campaigns the user has **already entered** appear here. To surface campaigns they could earn from but have not joined, call `campaigns.list` with `userAddress` instead.
+
+## Read the Claimable Amount
+
+<CodeGroup>
+```bash title="curl"
+curl https://api-tbi.boost.xyz/v1/claims/8453:56/0xUSER
+```
+
+```ts title="TypeScript"
+import { TbiNotFoundError } from "@boostxyz/tbi-sdk";
+
+let proof = null;
+try {
+  proof = await tbi.claims.get({ chainId: 8453, campaignIndex: 56 }, userAddress);
+} catch (e) {
+  if (!(e instanceof TbiNotFoundError)) throw e;
+  // 404: no position, no root yet, or the claim window closed. See below.
+}
+```
+</CodeGroup>
+
+<Warning>
+  **A 404 here is usually a normal state, not an error.** It means either the address has no position in that campaign, or no published root covers its rewards yet. Catch `TbiNotFoundError` and render an accruing state; surfacing it as a failure produces support tickets for a system working correctly.
+
+  There is one exception. The endpoint also returns 404 once the **claim window has closed**, including for users who never claimed. Do not show an accruing state there. Gate the copy on the campaign schedule, not on the 404 alone.
+</Warning>
+
+## Check Many Campaigns at Once
+
+When you are rendering a list, one request per campaign is wasteful. `claims.statuses` batches up to **100 campaign IDs**:
+
+<CodeGroup>
+```bash title="curl"
+curl "https://api-tbi.boost.xyz/v1/claims/statuses?userAddress=0xUSER&campaignIds=8453:56&campaignIds=8453:100"
+```
+
+```ts title="TypeScript"
+const statuses = await tbi.claims.statuses(userAddress, [
+  { chainId: 8453, campaignIndex: 56 },
+  { chainId: 8453, campaignIndex: 100 },
+]);
+```
+</CodeGroup>
+
+Campaigns without a published root report `claimable: 0n` rather than erroring, so there is no 404 to handle on this path.
+
+## UI States
+
+Five states cover everything a user can be in:
+
+| Condition | Show |
+| --- | --- |
+| No position in the campaign | Nothing, or a prompt to deposit |
+| Position exists, `claims.get` returns 404, campaign still within its claim window | "Rewards accruing, claimable after the next distribution" |
+| `claims.get` returns 404 and the claim window has closed | "Claim window closed", never an accruing message |
+| `claimable === 0n` and `accumulatedRewards > 0n` | The same accruing message |
+| `claimable > 0n`, wallet on the wrong chain | A button that prompts a switch to the reward chain |
+| `claimable > 0n`, wallet on the reward chain | An active claim button |
+
+```ts
+const canClaim =
+  proof !== null &&
+  proof.claimable > 0n &&
+  walletChainId === campaign.id.chainId;
+```
+
+Note what is **not** in that condition: campaign status. Ended campaigns stay claimable, and `finalized` means everything earned is claimable. Gate on the amount.
+
+## Formatting Amounts
+
+```ts
+import { formatUnits } from "viem";
+
+function formatReward(raw: bigint, decimals: number) {
+  const n = Number(formatUnits(raw, decimals));
+  if (n === 0) return "0";
+  if (Math.abs(n) < 1) {
+    return n.toLocaleString("en-US", { maximumSignificantDigits: 4 });
+  }
+  return n.toLocaleString("en-US", { maximumFractionDigits: 4 });
+}
+```
+
+<Warning>
+  The `< 1` branch is load-bearing. A position opened in the last few hours can hold a reward of around `0.00003` tokens, and a fixed four-decimal format renders that as `0.0000`, a valid claimable reward that reads as empty. Switch to significant digits below 1, and keep raw units available in your debug tooling.
+</Warning>
+
+Every amount is a `bigint`, so `JSON.stringify` throws on these objects. See [Data Conventions](/developers/concepts/data-conventions#every-amount-is-a-bigint) for the logging and persistence serializers.
+
+## Keep Exploring
+
+<CardGroup cols={2}>
+  <Card title="Claim Rewards" href="/developers/guides/claim-rewards">
+    Turn a claimable amount into a confirmed transaction.
+  </Card>
+  <Card title="How Claiming Works" href="/developers/concepts/claiming">
+    Why earned and claimable move on different clocks.
+  </Card>
+</CardGroup>

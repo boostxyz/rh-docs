@@ -1,0 +1,148 @@
+---
+title: "Data Conventions"
+description: "Wire formats, bigint amounts, pagination, caching, and how the /v1 contract evolves"
+---
+
+Every endpoint follows the same conventions for amounts, timestamps, pagination, and errors. The [SDK](/developers/sdk) applies all of this at the client boundary; if you call `/v1` directly, you own the conversions.
+
+## Wire Format and SDK Types
+
+| Convention | On the wire | In the SDK |  |
+| --- | --- | --- | --- |
+| Token amounts, rewards, basis points | Decimal strings (`"750000000000000000"`). JSON numbers lose precision past 2^53 | Native `bigint` |  |
+| On-chain timestamps (`startTime`, `endTime`, `triggeredAt`) | Unix seconds as decimal strings | `bigint` (unix seconds) |  |
+| Root publication time (`publishedAt`) | Unix seconds as decimal string, or `null` | `Date \ | null` |
+| Addresses | Lowercase `0x` hex | viem `Address` |  |
+| Missing data | `null` for fields that apply but have no value. Disabled mode keys and target fields that do not apply to the token standard are **omitted entirely** | `null` or absent |  |
+| Paginated lists | `{ data, total }`, default `limit` 20, max 100 | `PaginatedResponse<T>` |  |
+| Errors | `{ error, code, details }` envelope | Typed error classes |  |
+
+A raw stats response and its SDK equivalent, side by side:
+
+<CodeGroup>
+```json title="Raw JSON"
+{
+  "id": { "chainId": 8453, "campaignIndex": 56 },
+  "tvl": "7608022",
+  "participants": 2,
+  "rewardsDistributed": "1949",
+  "rewardsRemaining": "13498051",
+  "boostApyBps": null,
+  "protocolApyBps": "247"
+}
+```
+
+```ts title="SDK"
+{
+  id: { chainId: 8453, campaignIndex: 56 },
+  tvl: 7608022n,
+  participants: 2,
+  rewardsDistributed: 1949n,
+  rewardsRemaining: 13498051n,
+  boostApyBps: null,
+  protocolApyBps: 247n,
+}
+```
+</CodeGroup>
+
+<Warning>
+  Do not test for a field with `=== null`. An ERC-20 target has no `poolId` key at all, and a Uniswap v4 target has no `tokenId` key, so `"poolId" in target` and optional chaining are the safe checks. See [Targets](/developers/concepts/campaigns#targets).
+</Warning>
+
+## Mixed Time Representations
+
+<Warning>
+  Timestamps are not uniform across the response types. `startTime`, `endTime`, and `triggeredAt` are `bigint` unix **seconds**. `publishedAt` on a claim proof is already a JavaScript `Date`. Applying `Number(x) * 1000` to a `Date` produces a timestamp in the year 58563.
+</Warning>
+
+```ts
+const campaign = await tbi.campaigns.get(id);
+const proof = await tbi.claims.get(id, address);
+
+new Date(Number(campaign.endTime) * 1000);  // bigint seconds -> Date
+proof.publishedAt;                          // already a Date | null
+```
+
+## Every Amount Is a bigint
+
+`claimable`, `cumulativeAmount`, `accumulatedRewards`, `tvl`, and the APY fields are all `bigint`. `JSON.stringify(1n)` throws, so logging and persistence both need a replacer.
+
+```ts
+JSON.stringify(proof, (_, v) => (typeof v === "bigint" ? v.toString() : v), 2);
+```
+
+In-memory caches like TanStack Query and SWR handle `bigint` fine. If you persist cache data to `localStorage` or IndexedDB, add a serializer pair:
+
+```ts
+export function stringifyWithBigint(value: unknown) {
+  return JSON.stringify(value, (_, entry) =>
+    typeof entry === "bigint" ? `${entry.toString()}n` : entry,
+  );
+}
+
+export function parseWithBigint(value: string) {
+  return JSON.parse(value, (_, entry) => {
+    if (typeof entry === "string" && /^\d+n$/.test(entry)) {
+      return BigInt(entry.slice(0, -1));
+    }
+    return entry;
+  });
+}
+```
+
+## Pagination
+
+List endpoints return `{ data, total }`. `total` is the full match count, not the page size, so paginate on `offset` until you have collected `total` rows.
+
+```ts
+const first = await tbi.campaigns.list({ limit: 100, offset: 0 });
+const rest = first.total > 100
+  ? await tbi.campaigns.list({ limit: 100, offset: 100 })
+  : { data: [] };
+```
+
+`limit` defaults to 20 and caps at 100. Asking for more returns a validation error rather than silently truncating. The exception is `/v1/users/{address}/balances`, where `limit` defaults to 1000 and caps at 1000.
+
+## Caching and Polling
+
+Responses are served from short server-side caches and update on the reward checkpoint cadence of minutes, not seconds. Cache stats reads for **60 seconds or more** and keep polling modest. There is no API key, so there is nothing to raise; the ceiling is shared.
+
+## Rate Limiting
+
+The API rate limit is **100 requests per 60 seconds, per IP**. Exceeding it returns HTTP 429 with `code: "RATE_LIMITED"`.
+
+Every response carries standard rate-limit headers, which are a better input for adaptive backoff than a hardcoded number:
+
+```text
+ratelimit-limit: 100
+ratelimit-policy: 100;w=60
+ratelimit-remaining: 99
+ratelimit-reset: 60
+```
+
+Read `ratelimit-remaining` and slow down before you hit zero; `ratelimit-reset` is the seconds until the window rolls over.
+
+The SDK retries transient failures automatically (network errors, 429, and 5xx) with exponential backoff (`baseDelayMs * 2^(attempt - 1)`, defaulting to 3 attempts and a 200 ms base). Other 4xx responses and aborted requests are never retried. The error only surfaces once the retry budget is exhausted.
+
+```ts
+const tbi = createTbiClient({ retry: { attempts: 5, baseDelayMs: 500 } });
+```
+
+<Note>
+  Tell us if you expect sustained high-volume traffic. There is no API key, so the limit is per IP and shared; a server-side integration polling on behalf of many users hits it faster than you would expect.
+</Note>
+
+## Versioning
+
+Once published, the `/v1` contract changes **additively only**. Fields are never renamed, removed, or retyped. New fields and new endpoints may appear at any time, so parse defensively and ignore fields you do not recognise.
+
+## Keep Exploring
+
+<CardGroup cols={2}>
+  <Card title="Errors" href="/developers/errors">
+    The error envelope, the SDK error classes, and how to handle each one.
+  </Card>
+  <Card title="API Reference" href="/api-reference/introduction">
+    Every endpoint, parameter, and response schema, generated from the live spec.
+  </Card>
+</CardGroup>

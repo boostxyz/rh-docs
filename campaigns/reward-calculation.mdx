@@ -1,0 +1,132 @@
+---
+title: "Reward Calculation"
+description: "How eligible balance and time held translate into rewards"
+---
+
+What a user earns from a campaign comes down to two things: **how much eligible balance they hold** and **how long they hold it for**. This page walks through how those two inputs become real reward amounts, with a few worked examples.
+
+## The drip
+
+Every campaign defines a total reward budget and a duration. Together they set the rate at which rewards flow out:
+
+```
+reward rate = total budget ÷ duration
+```
+
+A 30-day campaign with a 60,000 USDC budget drips at roughly 2,000 USDC per day, or about 0.023 USDC per second. That stream runs continuously from `startTime` to `endTime`.
+
+The drip doesn't pause and doesn't accelerate. The same amount flows every second, regardless of how many users are participating.
+
+## Your share of the moment
+
+At any given second, the drip is split across everyone holding eligible balance at that moment, in proportion to how much they hold:
+
+```
+your share = your eligible balance ÷ total eligible balance
+```
+
+If Alice holds \$100 of eligible balance and the total across all participants is \$1,000, Alice captures 10% of that second's drip. If she holds \$500 of \$1,000, she captures 50%.
+
+The share changes the instant anything moves — someone deposits, someone withdraws, prices shift — and earnings adjust in real time.
+
+## Pulling it together
+
+A user's earnings over time are just the sum of every second's drip × their share for that second:
+
+```
+earnings = drip × share × time held
+```
+
+Bigger share or longer time held = bigger earnings. When the share or balance changes, the math segments and adds up across each interval.
+
+## Worked examples
+
+### One user, full duration
+
+Campaign: 100 USDC over 10 days.
+
+Alice is the only participant the entire time. She has 100% share at every moment. **Alice earns 100 USDC.**
+
+### Two users, same balance
+
+Campaign: 100 USDC over 10 days. Alice and Bob both hold \$100, both hold the entire time.
+
+They each have 50% share at every moment. **Alice earns 50, Bob earns 50.**
+
+### Two users, different balances
+
+Campaign: 100 USDC over 10 days. Alice holds \$100. Bob holds \$200.
+
+Bob's share is twice Alice's at every moment. **Alice earns ~33.3, Bob earns ~66.7.**
+
+### A late joiner
+
+Campaign: 100 USDC over 10 days, so 10 USDC per day. Alice holds \$100 from day 1. Bob joins on day 6 with \$100.
+
+| Period | Who's in | Daily split |
+| --- | --- | --- |
+| Days 1–5 | Alice only | 10 → Alice (50 over 5 days) |
+| Days 6–10 | Alice + Bob | 5 → Alice, 5 → Bob (25 each over 5 days) |
+
+**Alice earns 75, Bob earns 25.** Alice earned more because she was there longer.
+
+### An early exit
+
+Same campaign. Alice holds \$100 from day 1, then exits on day 6. No one else joins.
+
+| Period | Who's in | Daily split |
+| --- | --- | --- |
+| Days 1–5 | Alice only | 10 → Alice (50 over 5 days) |
+| Days 6–10 | Nobody | 10 per day undistributed |
+
+**Alice earns 50.** The 50 USDC of drip from days 6–10 stays in the pool. With no one to receive it, it becomes recoverable budget for the creator at finalization.
+
+## A note on undistributed drip
+
+The drip never stops, but it can flow into an empty pool. When no one holds eligible balance during a stretch — at the start of a campaign, between participant rotations, or after everyone exits — that period's rewards aren't distributed.
+
+Undistributed rewards stay in the campaign and are recoverable by the creator at the end of the campaign. Nothing gets lost; it just doesn't go to a user.
+
+## What modes change
+
+Most [campaign modes](/campaigns/campaign-modes) shape the *inputs* to this formula rather than the formula itself:
+
+- **Minimum Balance** — balances below the threshold are treated as 0.
+- **Deposit Cap** — balances above the cap are clamped down.
+- **New Capital** — only the increase over a snapshot counts.
+- **Deposit Tiers** — the qualifying tier's multiplier is applied to the full balance.
+
+A couple of modes change the rate or how it's computed:
+
+- **Fixed APY** — replaces the fixed-amount drip with one that flexes to maintain a target APY across whatever balance is in the campaign.
+- **Capped APY** — caps the per-second drip when the natural rate would exceed the ceiling. Held-back budget stays in the pool.
+
+A couple of modes gate participation rather than transforming balance:
+
+- **Capital Cap** — stops new balance from counting once the total cap is reached.
+- **Participant Cap** — caps the number of distinct earners.
+
+## When rewards land in a user's wallet
+
+Earnings accrue continuously but they aren't transferred on every second. Boost takes a reward snapshot on a regular cadence, publishes it on-chain, and from that point the user can claim what's accrued so far.
+
+Snapshots are cumulative — a user can claim now, claim later, or claim everything at once at the end. The drip math above is what determines how much is in their accrued balance at any given moment; the snapshot is what makes it withdrawable.
+
+See [Campaign Lifecycle](/campaigns/campaign-lifecycle) for how snapshots fit into the full campaign arc.
+
+## Keep Exploring
+
+<CardGroup cols={2}>
+  <Card title="Campaign Modes" icon="sliders" href="/campaigns/campaign-modes">
+    The stackable rules that shape who earns and how much.
+  </Card>
+  <Card title="Campaign Lifecycle" icon="clock-rotate-left" href="/campaigns/campaign-lifecycle">
+    The phases a campaign moves through from setup to claim window close.
+  </Card>
+  <Card title="How It Works" icon="book-open" href="/campaigns/how-it-works">
+    The plain-English overview of a campaign from end to end.
+  </Card>
+  <Card title="Glossary" icon="book" href="/campaigns/glossary">
+    Quick definitions for terms used across the docs.
+  </Card>
+</CardGroup>

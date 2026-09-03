@@ -1,0 +1,120 @@
+---
+title: "How Claiming Works"
+description: "Merkle roots, cumulative amounts, and what claimable actually means"
+---
+
+Almost every claim-integration bug comes from one of three misunderstandings: which number is claimable, when it changes, and what to pass on-chain. This page settles all three.
+
+## From Accrual to Roots
+
+Rewards are computed off-chain by Boost's indexers and committed as **merkle roots** on the reward chain. Users claim against the TBI Manager with a proof the API hands out.
+
+Roots publish **periodically while the campaign runs**, not only at the end, so claims open during a campaign rather than after it. A proof with `publishedAt: null` means a tree exists but its root is not on-chain yet; nothing is claimable until it is.
+
+## Cumulative-Distributor Semantics
+
+The merkle leaf holds the user's **lifetime reward total**, not the delta since their last claim.
+
+```ts
+{
+  cumulativeAmount: 37929802521820n,  // lifetime total, pass this verbatim
+  alreadyClaimed:   0n,               // what the contract has already paid
+  claimable:        37929802521820n,  // cumulativeAmount - alreadyClaimed
+  proof: ["0x74b8a54d…", "0xf5c3da3e…"],
+  root:  "0x05b105e3…",
+  publishedAt: new Date("2026-08-05T12:05:22.000Z"),
+}
+```
+
+<Warning>
+  Pass `cumulativeAmount` to the contract **verbatim**. Never subtract `alreadyClaimed` yourself; the Manager does that and pays the difference. Sending the difference produces a leaf that is not in the tree, and the call reverts with `InvalidProof()`.
+</Warning>
+
+`claimable` exists for display. Re-submitting a fully-claimed proof is a no-op or a revert, never a double payment.
+
+## The Three Numbers
+
+A user's rewards surface as three different values, and they are supposed to differ.
+
+| Field | Where it comes from | What it is | Drives a claim button? |
+| --- | --- | --- | --- |
+| `accumulatedRewards` | `rewards.forUser` | Lifetime accrual, moving continuously | No |
+| `claimable` | **`claims.get`** | The merkle-published amount minus what was claimed | **Yes** |
+| `alreadyClaimed` | `claims.get` | What the contract has paid so far | No |
+
+<Warning>
+  **Only `claims.get()` drives a claim button.** `accumulatedRewards` tracks live accrual and is always ahead of what a published root covers, and `userPosition.claimable` is not a substitute either. A button wired to anything other than `claims.get().claimable` over-promises and the transaction reverts with `InvalidProof()`.
+</Warning>
+
+Show `accumulatedRewards` in the earned row, since it is the number that moves and the one users want to watch. Show `claims.get().claimable` on the button.
+
+## Two Clocks
+
+Accrual and claimability move on different clocks, and users notice.
+
+- **Accrual** updates continuously. The earned figure climbs every time you refresh.
+- **Claimability** steps only when a new merkle root is published on-chain.
+
+A user who deposits shortly after a root publishes will watch rewards climb for hours before any of it becomes claimable. Say so in the UI or expect support tickets.
+
+<Note>
+  Roots publish periodically, on the order of hours rather than seconds. The exact cadence is not a published commitment, so point users at the next distribution rather than a countdown.
+</Note>
+
+## Who Can Submit
+
+The claim function pays the `user` argument, **independent of `msg.sender`**. Anyone can submit a claim on a user's behalf and the rewards still land with the user.
+
+That means relayer and account-abstraction flows work with no special support, and you can sponsor gas for your users without ever holding their rewards. [Contracts](/developers/contracts#gas) covers the calldata and the measured gas cost.
+
+## Batch Claims
+
+`claimAll` batches several claims into one Multicall3 `aggregate` transaction. Two constraints:
+
+- Every campaign in the batch must share **one reward chain**.
+- The batch is **all-or-nothing**: if one subcall reverts, the whole transaction reverts.
+
+If you would rather have partial success, loop `tbi.claim()` per campaign instead.
+
+## Linked Claim Addresses
+
+For campaigns where positions are tracked on a different chain than rewards are claimed (prediction-market campaigns, typically), the claiming address on the reward chain is linked to the trading address on the event chain, and **permanently locked per campaign** to prevent double claims. Query claims with the reward-chain address the user linked.
+
+## Cliff State on Proofs
+
+Campaigns running `cliff` mode require users to hold their position for `cliffDurationSeconds` from their trigger. Dropping below their peak balance by more than `buffer` breaks the cliff and forfeits everything accrued.
+
+A claim proof for a cliff campaign carries that state:
+
+- `cliffPositions[].status` is `"intact"` (still in the hold window), `"passed"` (completed), or `"broken"` (forfeited), with `endsAt` marking completion.
+- `cliffBreak` describes the balance drop that broke it, when one occurred.
+
+<Warning>
+  Surface cliff state **before** a user withdraws. A withdrawal that breaks a cliff forfeits every reward accrued so far, and there is no way to undo it.
+</Warning>
+
+<Note>
+  Cliff fields are part of the API surface and are `null` on campaigns that do not use the mode. Confirm availability with the Boost team before designing a campaign around it.
+</Note>
+
+## Claim Windows
+
+Claims do not stay open forever; the `ClaimExpired()` revert exists for exactly this. Standard campaigns allow **60 days** after the campaign ends, and the window is configurable per campaign. Once it closes, unclaimed rewards become recoverable by the campaign creator.
+
+<Note>
+  The claim deadline is not currently exposed as an API field. If your UI needs to show a countdown, ask the Boost team for the window on your specific campaign. See [Campaign Lifecycle](/campaigns/campaign-lifecycle) for the phase this belongs to.
+</Note>
+
+## Keep Exploring
+
+<CardGroup cols={3}>
+  <Card title="Claim Rewards" href="/developers/guides/claim-rewards">
+    The implementation: fetch, gate, simulate, submit.
+  </Card>
+  <Card title="Show User Rewards" href="/developers/guides/show-user-rewards">
+    Rendering earned versus claimable, and the states in between.
+  </Card>
+  <Card title="Contracts" href="/developers/contracts">
+    The Manager, the claim signature, and revert selectors.
+  </Card>
+</CardGroup>

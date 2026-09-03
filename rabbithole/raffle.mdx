@@ -1,0 +1,68 @@
+---
+title: "Raffle"
+description: "How the monthly raffle works: earning entries from your tier, bonus entries, the draw, and claiming a prize"
+---
+
+<Warning>
+  **The raffle is being rebuilt.** After the August 2026 draw, the raffle pauses while Rabbithole reworks how tiers and entries work. No new entries are added during the pause. The mechanics below describe the raffle as it ran up to that draw and will be updated when it returns.
+</Warning>
+
+Rabbithole runs one raffle draw a month. Entries come from your tier, land every week, and are locked in a public snapshot before a public random number picks the winners. The prize is funded by Rabbithole's protocol fees, not by any campaign's reward budget.
+
+<Frame>
+  <img src="/images/rabbithole/raffle-panel.jpg" alt="The raffle panel showing a 5,000 USDC prize, a countdown to the draw, the viewer's 226 entries split into base and bonus entries, base entries by tier from Bronze at 0 to Diamond at 5,000, and a prompt to reach Platinum for more entries." />
+</Frame>
+
+## Earning Entries
+
+There are two kinds of entries, and they add together.
+
+### Base entries
+
+Every week, you receive base entries for the tier you hold that week. The higher the tier, the more entries.
+
+| Tier | Base entries per week |
+| --- | --- |
+| Bronze | 0 |
+| Silver | 10 |
+| Gold | 100 |
+| Platinum | 1,000 |
+| Diamond | 5,000 |
+
+A tier change counts from the next weekly drop. Entries already awarded keep the rate they were awarded at, so dropping a tier late in the month does not take earlier entries away.
+
+Weeks are counted from the start of the raffle period. The **Week by week** section of the raffle panel shows the tier, rank, and earnings that produced each week's entries, plus a projection for the week in progress.
+
+### Bonus entries
+
+Featured campaigns can carry a perk such as **100 raffle entries for every $1 you claim**. Claim rewards on that campaign and the bonus entries stack on top of your base entries. They are credited on the weekly drop along with everything else, and show as projected until then.
+
+## The Draw
+
+<Steps>
+  <Step title="Cutoff">
+    At the end of the period, entries lock. The panel shows the countdown.
+  </Step>
+  <Step title="Snapshot">
+    All entries are written into a public snapshot. The snapshot hash is shown in the panel, so anyone can verify the pool.
+  </Step>
+  <Step title="Random number">
+    A public random number is requested and used to pick the winners against the snapshot.
+  </Step>
+  <Step title="Prizes">
+    Winners are announced in the panel and claim their prize from it. Prizes are paid in USDC on Base.
+  </Step>
+</Steps>
+
+Your odds are your entries divided by the total entries in the pool. The panel shows this as "1 in N".
+
+## Previous Draws
+
+Switch the panel to **Previous** to see past draws, the winning entries, and whether you won. If you did, a **Claim** button appears there until you take the prize.
+
+## Rules
+
+- You need a signed-in account with a linked wallet to earn entries.
+- Bronze tier earns no base entries. Reach Silver to start.
+- Entries are per account, not per wallet. Linking more wallets does not multiply them.
+- Rabbithole may exclude entries that come from abuse, such as wash activity across accounts, and may pause or change the raffle. The in-app panel is the source of truth for the current period.

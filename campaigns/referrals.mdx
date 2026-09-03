@@ -1,0 +1,78 @@
+---
+title: "Referrals"
+description: "Pay the people and partners who bring depositors, out of the campaign fee rather than the reward budget"
+---
+
+A campaign can pay the partners who bring depositors, out of the fee rather than out of the reward budget. Participants earn exactly what they would have earned otherwise.
+
+<Note>
+  Referrals run at two levels. **Users** on Rabbithole share campaigns with their invite link and earn a share of what their referees earn; that flow is described in [Referrals](/rabbithole/referrals) in the Rabbithole section. **Protocols and partners** configure the split and integrate attribution, which is what this page covers.
+</Note>
+
+## What Is Live Today
+
+- The **campaign-level split** is an on-chain parameter set at campaign creation. Campaigns created with a non-zero split get a dedicated `ReferralDistributor` contract; campaigns created without one have no referral program and cannot add one later.
+- The **referral pool** is transferred to that distributor when the campaign is created, so the money is set aside up front rather than promised.
+- **Claiming** happens on-chain through the Manager, which pays out of the distributor, in a claim window enforced by the contract. Rabbithole users claim from the Referral earnings page; integrations fetch a proof from the API and submit it.
+
+## What Is Available
+
+| Piece | Status |
+| --- | --- |
+| Campaign-level referral split | Set with the Boost team at campaign creation |
+| Public API: bind a referee, referrer stats, claim proofs | Live under `/v1/referrals`. See the [API reference](/api-reference/introduction) |
+| Referral earnings and claiming on Rabbithole | Live, in the profile menu |
+| Self-serve configuration of the split | Not planned; set at campaign creation |
+| Partner dashboard | Not shipped |
+| Per-partner rates within one campaign | Open design question. One global rate today |
+
+## How It Works
+
+Three numbers, at three different levels. They are easy to conflate.
+
+<Steps>
+  <Step title="The campaign sets aside a pool">
+    At creation, the campaign carves a share of the **campaign fee** into a referral pool and transfers it to the campaign's own `ReferralDistributor`. This comes out of the fee, not out of participant rewards. The reward budget users earn from is unchanged.
+  </Step>
+  <Step title="Referrers accrue an entitlement">
+    A referrer earns **25% of the rewards their referees actually earned** in that campaign. Because it is a share of earned rewards rather than of deposits, capital that arrives and leaves immediately is worth almost nothing. It pays for retained TVL.
+  </Step>
+  <Step title="Entitlements are scaled into the pool">
+    Entitlements are computed after the campaign finalizes and then scaled **pro rata** into whatever the pool actually holds. The pool is a hard cap: if total entitlements exceed it, every referrer is scaled down proportionally. Referrers claim their share on-chain.
+  </Step>
+</Steps>
+
+<Warning>
+  The 25% referrer rate and the campaign's fee split are **different numbers at different levels**. The split decides how big the pool is; the 25% decides how entitlements are ranked within it. A referrer's actual payout is the smaller of their entitlement and their pro-rata slice of the pool.
+</Warning>
+
+## Attribution
+
+A referrer is bound to a referee per campaign, and the binding is deliberately strict:
+
+- **One referrer per referee, per campaign.** First bind wins.
+- **The bind must come before the referee starts earning.** A binding submitted after the referee's first reward-accruing event in that campaign does not count. There is a short grace window to absorb the race between submitting the bind and the deposit landing in a block, but it is seconds, not hours.
+- **No retroactive attribution.** A wallet that already holds a position in the campaign cannot be bound afterwards.
+
+The practical consequence for a partner: **whoever owns the last step before the deposit owns the attribution.** If your users deposit through your interface, the bind has to happen there, via `POST /v1/referrals/bind` with a signed `ReferralBind` message.
+
+<Note>
+  Campaigns that reward anyone holding the target position still reward users who arrive through your product. They just cannot be attributed to you without a bind, so nobody can be paid for having sent them.
+</Note>
+
+## What This Is Not
+
+- **Not a discount on your campaign fee.** The split changes who receives the fee, not how much is charged.
+- **Not a cost to participants.** Rewards are untouched. A campaign with a referral split pays its users exactly what the same campaign without one would pay.
+- **Not a general affiliate program.** It is scoped per campaign, with one rate, and configured by the Boost team.
+
+## Keep Exploring
+
+<CardGroup cols={2}>
+  <Card title="Pricing" href="/campaigns/pricing">
+    How campaign fees are charged and what happens to budget nobody claims.
+  </Card>
+  <Card title="Earning Activation" href="/campaigns/earning-activation">
+    The related control that limits rewards to users who entered through Boost.
+  </Card>
+</CardGroup>

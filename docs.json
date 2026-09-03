@@ -1,53 +1,164 @@
 {
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
-  "name": "Mintlify Starter Kit",
+  "name": "Rabbithole",
+  "description": "Documentation for Rabbithole: earning on rabbithole.gg, running campaigns, and integrating campaign data and claims into your own product.",
   "colors": {
-    "primary": "#16A34A",
-    "light": "#07C983",
-    "dark": "#15803D"
+    "primary": "#0a9e65",
+    "light": "#43e661",
+    "dark": "#0a9e65"
+  },
+  "logo": {
+    "light": "/logo/light.svg",
+    "dark": "/logo/dark.svg",
+    "href": "https://app.rabbithole.gg"
   },
   "favicon": "/favicon.svg",
+  "api": {
+    "playground": {
+      "display": "interactive"
+    }
+  },
   "navigation": {
-    "pages": [
+    "tabs": [
       {
-        "group": "Getting Started",
-        "pages": [
-          "index",
-          "quickstart"
+        "tab": "Rabbithole",
+        "groups": [
+          {
+            "group": "Start Here",
+            "pages": [
+              "rabbithole/introduction",
+              "rabbithole/getting-started"
+            ]
+          },
+          {
+            "group": "Earning",
+            "pages": [
+              "rabbithole/hold-to-earn",
+              "rabbithole/tiers-and-leaderboard",
+              "rabbithole/raffle",
+              "rabbithole/referrals"
+            ]
+          },
+          {
+            "group": "Help",
+            "pages": [
+              "rabbithole/faq"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Campaigns",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "campaigns/introduction",
+              "campaigns/how-it-works"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "campaigns/reward-calculation",
+              "campaigns/campaign-lifecycle",
+              "campaigns/campaign-modes",
+              "campaigns/earning-activation"
+            ]
+          },
+          {
+            "group": "Run a Campaign",
+            "pages": [
+              "campaigns/launch-a-campaign",
+              "campaigns/pricing",
+              "campaigns/referrals"
+            ]
+          },
+          {
+            "group": "Resources",
+            "pages": [
+              "campaigns/glossary"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Developers",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "developers/overview",
+              "developers/quickstart"
+            ]
+          },
+          {
+            "group": "Concepts",
+            "pages": [
+              "developers/concepts/campaigns",
+              "developers/concepts/claiming",
+              "developers/concepts/data-conventions"
+            ]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "developers/guides/display-campaign-stats",
+              "developers/guides/show-user-rewards",
+              "developers/guides/claim-rewards",
+              "developers/guides/forwarder-deposits"
+            ]
+          },
+          {
+            "group": "Reference",
+            "pages": [
+              "developers/sdk",
+              "developers/contracts",
+              "developers/errors"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "openapi": "https://api-tbi.boost.xyz/v1/openapi.json",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "api-reference/introduction"
+            ]
+          }
         ]
       }
     ],
     "global": {
       "anchors": [
         {
-          "anchor": "Documentation",
-          "href": "https://mintlify.com/docs",
-          "icon": "book-open-cover"
+          "anchor": "Open Rabbithole",
+          "href": "https://app.rabbithole.gg",
+          "icon": "rabbit"
         },
         {
-          "anchor": "Blog",
-          "href": "https://mintlify.com/blog",
-          "icon": "newspaper"
+          "anchor": "Discord",
+          "href": "https://discord.gg/JTCqaekdm",
+          "icon": "discord"
         }
       ]
     }
-  },
-  "logo": {
-    "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
   },
   "navbar": {
     "links": [
       {
         "label": "Support",
-        "href": "mailto:hi@mintlify.com"
+        "href": "https://discord.gg/JTCqaekdm"
       }
     ],
     "primary": {
       "type": "button",
-      "label": "Dashboard",
-      "href": "https://app.mintlify.com"
+      "label": "Open Rabbithole",
+      "href": "https://app.rabbithole.gg"
     }
   },
   "contextual": {
@@ -55,18 +166,14 @@
       "copy",
       "view",
       "chatgpt",
-      "claude",
-      "perplexity",
-      "mcp",
-      "cursor",
-      "vscode"
+      "claude"
     ]
   },
   "footer": {
     "socials": {
-      "x": "https://x.com/mintlify",
-      "github": "https://github.com/mintlify",
-      "linkedin": "https://linkedin.com/company/mintlify"
+      "x": "https://x.com/rabbithole_gg",
+      "discord": "https://discord.gg/JTCqaekdm",
+      "github": "https://github.com/boostxyz"
     }
   }
 }

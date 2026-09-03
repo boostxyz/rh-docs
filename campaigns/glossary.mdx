@@ -1,0 +1,142 @@
+---
+title: "Glossary"
+description: "Quick reference for terms used across these docs"
+---
+
+A quick reference for terminology used across these docs. Each entry links to the relevant deeper coverage where useful.
+
+## Foundations
+
+**Boost** — The platform behind Time-Based Incentives. Boost runs the operational layer end-to-end: indexing on-chain events, computing rewards, publishing snapshots, and serving campaign data. References to "the operator" in these docs mean Boost.
+
+**Campaign** — A single incentive program: a fixed reward budget paid out continuously over a fixed schedule against a chosen [target](#target) position. Each campaign has its own configuration — targets, budget, schedule, eligibility, and any modes.
+
+**Creator** — The team or address that funded and configured a campaign.
+
+**Eligibility** — Who is allowed to earn from a campaign. Three options: [open](#open), [allowlist](#allowlist), or [verified](#verified).
+
+**Mode** — A stackable rule that shapes who earns and how much within a campaign. See [Campaign Modes](/campaigns/campaign-modes) for the full catalog.
+
+**rabbithole.gg** — Boost's consumer-facing app, where users discover campaigns, hold positions, and claim rewards. Teams running campaigns can monitor live stats here too.
+
+**Target** — The on-chain position that counts toward earning. Could be a token, a vault share, an LP position, or another protocol position.
+
+**Time-Based Incentives (TBI)** — A reward program where users earn in proportion to how much eligible balance they hold and how long they hold it. Rewards drip continuously over the campaign window.
+
+---
+
+## Earning mechanics
+
+**Accrued rewards** — The reward total a user has earned but not yet claimed. Updates continuously as their position changes.
+
+**Drip** — The continuous flow of rewards out of a campaign budget. The drip rate is set by `total budget ÷ duration` and runs every second the campaign is active.
+
+**Eligible balance** — A user's position size as it counts for rewards. Modes can transform raw balance into eligible balance — capping it, multiplying it, or zeroing it out below a threshold.
+
+**Eligible position** — A user's holding of a campaign's target, after eligibility rules have been applied. A user with the right asset but the wrong eligibility (e.g., not on an allowlist) does not have an eligible position.
+
+**Merkle root** — The cryptographic commitment to a [snapshot](#snapshot), published on-chain. Users prove their claim against the latest root.
+
+**Position** — A user's holding of a campaign's target asset. Tracked per user, per campaign.
+
+**Reward rate** — Same as drip rate. The amount of reward token paid out per second of the campaign.
+
+**Share** — A user's slice of the [drip](#drip) at a given moment. `share = your eligible balance ÷ total eligible balance`. Recomputed continuously as people enter and exit.
+
+**Snapshot** — A periodic on-chain publication of cumulative rewards. Once a snapshot lands, the user's accrued earnings up to that point become claimable. Sometimes called a *reward snapshot* to distinguish it from a [snapshot block](#snapshot-block).
+
+**Snapshot block** — A specific historical block used as a reference point. Used by the [New Capital](#new-capital) mode to measure pre-existing balance.
+
+**Trigger** — The moment a user first becomes eligible to earn — typically when their balance moves from zero to non-zero and any eligibility checks pass. After triggering, they accrue continuously while the position stays active.
+
+**TVL** — Total Value Locked. The aggregate eligible balance currently active in a campaign.
+
+---
+
+## Lifecycle phases
+
+See [Campaign Lifecycle](/campaigns/campaign-lifecycle) for the full arc.
+
+**Active** — The campaign is live. `startTime` has passed and `endTime` hasn't. Users earn continuously.
+
+**Cancelled** — The campaign was ended early by the creator or admin. Already-accrued rewards stay claimable on the normal schedule.
+
+**Closed** — The claim window has expired. Anything still unclaimed can be reclaimed by the creator.
+
+**Configured (Pending)** — The campaign is deployed and funded, but `startTime` hasn't hit. No earning yet.
+
+**Ended** — `endTime` has passed (or the campaign otherwise stopped early). Earning has stopped, but the system is still settling.
+
+**Finalized** — The final snapshot is locked. Total distributed rewards are confirmed and the creator can recover any unspent budget.
+
+---
+
+## Schedule
+
+**Campaign window** — The interval between `startTime` and `endTime` during which earning happens.
+
+**Claim window** — The period after a campaign finalizes during which users can still claim earned rewards. Standard campaigns use a 60-day window; configurable per campaign.
+
+**endTime** — When earning stops on the standard schedule.
+
+**startTime** — When earning begins.
+
+---
+
+## Money flow
+
+**Claim** — The on-chain action that transfers a user's earned rewards to their wallet. Uses a merkle proof against the latest snapshot. Claims are cumulative — claiming once now and once later, or all at once at the end, all return the same total.
+
+**Forfeited rewards** — Rewards a user accrued but lost — for example, by breaking a [Cliff](#cliff). Stay in the campaign pool, recoverable by the creator at finalization.
+
+**Recoverable budget** — The leftover funds the creator can withdraw at the end of a campaign. Includes undistributed rewards, throttled rewards (Capped APY), forfeited rewards (Cliff, when live), and any rewards left unclaimed after the claim window closes.
+
+**Reward budget** — The total amount of reward token committed to a campaign at launch.
+
+**Reward token** — The token users earn. Set when the campaign is created and locked for the campaign's life.
+
+**Throttled rewards** — Drip that was held back when [Capped APY](#capped-apy) bound the rate below its natural value. Stays in the pool as recoverable budget.
+
+**Undistributed rewards** — Drip that flowed during periods when no one held eligible balance. Stays in the pool as recoverable budget.
+
+---
+
+## Modes (quick reference)
+
+Each mode has its own section in [Campaign Modes](/campaigns/campaign-modes); these are one-line summaries.
+
+**Capital Cap** — Caps the *total* eligible balance summed across all participants.
+
+**Capped APY** — Throttles the per-second rate when the natural APY would exceed a ceiling.
+
+**Cliff** *(coming soon)* — Forfeits a user's accrued rewards if they exit before a hold window elapses.
+
+**Deposit Cap** — Caps each individual user's eligible balance at a maximum.
+
+**Deposit Tiers** — Larger positions earn more per token via tiered multipliers.
+
+**Fixed APY** — Pays out at a guaranteed annualized rate, regardless of total balance.
+
+**Minimum Balance** — Users below the threshold earn nothing; users at or above earn on their full balance.
+
+**New Capital** — Only the increase over a snapshot-block balance counts toward rewards.
+
+**Participant Cap** — Limits the number of distinct earners.
+
+---
+
+## Eligibility types
+
+**Allowlist** — Only addresses on a pre-approved list can earn.
+
+**Open** — Anyone holding the target position can earn.
+
+**Verified** — Only addresses that meet a verification standard (e.g., World ID) can earn.
+
+---
+
+## Other
+
+**APY** — Annual Percentage Yield. The annualized return rate a user would earn if conditions stayed constant for a year.
+
+**Cold start** — The early phase of a campaign before participation builds up. The natural APY can spike to absurd numbers because the reward pool is divided across very little capital. [Capped APY](#capped-apy) exists to address this.

@@ -1,0 +1,87 @@
+---
+title: "Developer Overview"
+description: "Integrate a live campaign into your own product: campaign data, user rewards, and on-chain claiming"
+---
+
+Rabbithole campaigns expose a public REST API and a TypeScript SDK for building campaign experiences inside your own product. Show a live reward APR next to your pool, surface what a user has earned, and let them claim without ever leaving your app.
+
+This is a **read and claim** surface. It never takes custody of funds and never mutates Boost state server-side. Claims and deposits are transactions your users sign.
+
+<Note>
+  Campaigns are not self-serve today. The Boost team scopes, integrates, and deploys each one (see [Launch a Campaign](/campaigns/launch-a-campaign)). These pages are for integrating a campaign that already exists.
+</Note>
+
+Campaign already live? Go straight to the [Quickstart](/developers/quickstart).
+
+## Get Access
+
+There is less to arrange than you might expect.
+
+1. **A live campaign.** Rewards have to be running against a vault, pool, or token before there is anything to display. Start that conversation with the team on [Discord](https://discord.gg/JTCqaekdm).
+2. **A partner `refId`.** An attribution ID that Boost assigns manually. The SDK sends it as the `x-boost-ref-id` header on every request so campaign usage can be credited to your integration. It is **not** authentication and not a secret.
+3. **Nothing else.** There is no API key, no signup, and no signed request. Every endpoint in these docs is public.
+
+<Note>
+  Ask for a `refId` in your shared partner channel with the Boost team, or on [Discord](https://discord.gg/JTCqaekdm), before you ship. Everything works without one; you just lose the attribution.
+</Note>
+
+## What You Can Build
+
+<CardGroup cols={2}>
+  <Card title="Display Campaign Stats" href="/developers/guides/display-campaign-stats">
+    Show a live reward APR, TVL, and participant count next to your own pool numbers. One request, no wallet.
+  </Card>
+  <Card title="Show User Rewards" href="/developers/guides/show-user-rewards">
+    Render what a user has earned and what they can claim, with every state in between.
+  </Card>
+  <Card title="Claim Rewards" href="/developers/guides/claim-rewards">
+    Put a working claim button in your own UI: batched, simulated, and relayer-friendly.
+  </Card>
+  <Card title="Forwarder Deposits" href="/developers/guides/forwarder-deposits">
+    Route deposits through the Boost Forwarder for campaigns that require activation.
+  </Card>
+</CardGroup>
+
+## SDK or Raw REST
+
+Both are first-class and hit the same endpoints. The SDK converts decimal strings to `bigint`, parses timestamps, and ships claim helpers that build and submit the transaction. Raw REST works from any language, but you own the parsing and the calldata encoding.
+
+<CodeGroup>
+```bash title="curl"
+curl https://api-tbi.boost.xyz/v1/campaigns/8453:56/stats
+# { "boostApyBps": null, "tvl": "7608022", … }  // strings on the wire
+```
+
+```ts title="TypeScript"
+import { createTbiClient } from "@boostxyz/tbi-sdk";
+
+const tbi = createTbiClient({ refId: "your_partner_id" });
+const stats = await tbi.campaigns.stats({ chainId: 8453, campaignIndex: 56 });
+// stats.boostApyBps: bigint | null  // 1550n means 15.50%
+```
+</CodeGroup>
+
+The base URL is `https://api-tbi.boost.xyz`, and the only server-side environments are production and local development. There is no partner-facing staging host.
+
+## Shared Fundamentals
+
+These apply across every guide:
+
+- **[Campaigns, IDs, and Chains](/developers/concepts/campaigns)**: the compound campaign key, the event-versus-reward-chain rule, lifecycle status, and campaign modes as data.
+- **[How Claiming Works](/developers/concepts/claiming)**: merkle roots, cumulative amounts, and why earned and claimable are different numbers.
+- **[Data Conventions](/developers/concepts/data-conventions)**: wire formats, `bigint` amounts, pagination, caching, and rate limits.
+- **[TypeScript SDK](/developers/sdk)**: install, configuration, and the full method surface.
+- **[Errors](/developers/errors)**: the shared error envelope and the typed SDK classes.
+- **[Contracts](/developers/contracts)**: the TBI Manager, the claim signature, and every revert selector.
+- **[API Reference](/api-reference/introduction)**: every endpoint, parameter, and response schema, generated from the live OpenAPI spec.
+
+## Keep Exploring
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" href="/developers/quickstart">
+    Discover, read, and claim in five steps.
+  </Card>
+  <Card title="How It Works" href="/campaigns/how-it-works">
+    The campaign model behind the API, from goal to earning to claim.
+  </Card>
+</CardGroup>

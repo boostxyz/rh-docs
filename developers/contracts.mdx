@@ -1,0 +1,99 @@
+---
+title: "Contracts"
+description: "The TBI Manager, the claim function, and every revert selector"
+---
+
+Claims settle on-chain against the **TBI Manager**. This page covers what you need to submit a claim without the SDK, and how to decode a failure when one happens.
+
+## Deployments
+
+| Contract | Address |
+| --- | --- |
+| TBI Manager | `0x81d1Bb513197F4e23E9676B4f3aaBC7de89b54D0` |
+| Multicall3 | `0xcA11bde05977b3631167028862bE2a173976CA11` |
+| Boost Forwarder | `0x7a33bcf7588190e3123235db746339045207bb93` |
+
+The Manager and the Forwarder are both deployed via `CREATE2`, so **the address is identical on every chain** they support. One constant works everywhere: the SDK exports them as `TBI_MANAGER_ADDRESS` and reads the Forwarder address off each target.
+
+Campaigns currently pay rewards on **Arbitrum (42161)**, **Base (8453)**, and **Worldchain (480)**. Positions can be tracked on other chains (Ethereum, Optimism, and Polygon all appear as event chains today), and a campaign can index activity on one chain while paying on another. See [Campaigns, IDs, and Chains](/developers/concepts/campaigns#event-chain-versus-reward-chain).
+
+<Note>
+  The reward chains above are the ones with live campaigns today, not a closed list. Confirm current coverage with the Boost team before you hardcode it.
+</Note>
+
+## The Claim Function
+
+```solidity
+function claim(
+    uint256 campaignId,       // the bare index: 4, not "42161:4"
+    address user,             // paid here, independent of msg.sender
+    uint256 cumulativeAmount, // verbatim from the API
+    bytes32[] proof
+) external;
+```
+
+Selector `0x2e7ba6ef`.
+
+Three things about the arguments are easy to get wrong:
+
+- **`campaignId` is the index alone.** The `"chainId:campaignIndex"` form is an API convention. On-chain you pass `campaignIndex`, and the chain you submit to *is* the `chainId`.
+- **`user` is the payee**, not `msg.sender`. Anyone can submit a claim on a user's behalf and the rewards still land with the user, which is what makes relayer and account-abstraction flows work with no special support.
+- **`cumulativeAmount` goes in verbatim.** It is the user's lifetime total from the merkle leaf. The Manager tracks what has already been claimed and pays the difference. Subtracting `alreadyClaimed` yourself produces a leaf that is not in the tree, and the call reverts with `InvalidProof()`.
+
+Building the calldata without a wallet:
+
+```ts
+const proof = await tbi.claims.get(id, address);
+const { to, data, value } = tbi.encodeClaim({ id: proof.id, proof });
+```
+
+## Revert Selectors
+
+| Selector | Error | Cause |
+| --- | --- | --- |
+| `0x09bde339` | `InvalidProof()` | Stale or tampered amount, wrong user, or a superseded root. The usual cause is a hand-computed `cumulativeAmount` |
+| `0x969bf728` | `NothingToClaim()` | The `cumulativeAmount` has already been claimed in full |
+| `0x82a49d9e` | `ClaimExpired()` | The campaign's claim window has closed |
+| `0xf4d678b8` | `InsufficientBalance()` | The campaign contract does not hold enough reward token |
+| `0xe07f7ab3` | `CampaignNotFinalized()` | The campaign has not reached a state where this claim is permitted |
+
+Catching a revert before the user signs costs one `eth_call`:
+
+```ts
+const sim = await tbi.claim.simulate({ walletClient, id, address });
+if (!sim.willSucceed) console.error(sim.revertReason);
+```
+
+## Batch Claims On-Chain
+
+`claimAll` wraps several `claim` calls into a single Multicall3 `aggregate` transaction. Every campaign in the batch must share one reward chain, and the batch is all-or-nothing: one failing subcall reverts the whole transaction.
+
+```ts
+const proofs = await Promise.all(ids.map((id) => tbi.claims.get(id, address)));
+const { to, data, value } = tbi.encodeClaimAll({ proofs });
+```
+
+## Reading Claim State On-Chain
+
+The API is served from short caches and can trail the chain by a few minutes right after a claim. When you need the authoritative answer immediately, for example to decide whether to re-enable a claim button, read it from the chain instead: fetch the campaign contract from the Manager, then read how much that address has claimed.
+
+<Note>
+  The exact ABI fragments for this lookup are not published yet. Until they are, the simpler fix is to mark the campaign claimed client-side once you have a transaction receipt. See [Claim Rewards](/developers/guides/claim-rewards#after-the-claim).
+</Note>
+
+## Gas
+
+A claim with a five-node merkle proof measured **132,443 gas**. Proof length grows with the number of participants in the campaign, so treat that as a reference point rather than a fixed cost.
+
+Because `claim` pays the `user` argument, you can submit claims through your own relayer and cover the gas without ever holding user rewards. [Claim Rewards](/developers/guides/claim-rewards#sponsor-gas) has the worked example.
+
+## Keep Exploring
+
+<CardGroup cols={2}>
+  <Card title="Claim Rewards" href="/developers/guides/claim-rewards">
+    The full claim flow, from proof to receipt.
+  </Card>
+  <Card title="How Claiming Works" href="/developers/concepts/claiming">
+    Merkle roots, cumulative amounts, and what claimable really means.
+  </Card>
+</CardGroup>

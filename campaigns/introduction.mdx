@@ -1,0 +1,127 @@
+---
+title: "Campaigns"
+sidebarTitle: "Introduction"
+description: "Reward users for keeping eligible onchain positions active over time"
+---
+
+Rabbithole campaigns help teams grow sustained onchain participation by rewarding users for the positions they keep active over time. Internally and in the SDK this product is called **Time-Based Incentives (TBI)**, and you will see that name in the developer docs and API.
+
+Instead of paying the same reward to every user who completes a single action, a campaign rewards users based on the size of their eligible position and how long they maintain it. Larger positions can earn more. Longer-held positions can earn more. Users who exit early stop accruing, while the rewards they already earned remain available to claim.
+
+Use a campaign when your goal is to build durable behavior: deeper liquidity, longer holding periods, stronger retention, or more committed participation in a protocol, vault, token, or ecosystem.
+
+<Note>
+  **Interested in launching a campaign?** We'll work with your team to scope the campaign, integrate your protocol, and ship it live. [Reach out on Discord](https://discord.gg/JTCqaekdm), or read [Launch a Campaign](/campaigns/launch-a-campaign) for what to expect.
+</Note>
+
+## Who It Is For
+
+<CardGroup cols={2}>
+  <Card title="Protocols" icon="rocket" href="/campaigns/campaign-modes">
+    Launch campaigns that align rewards with the behavior you actually want: users keeping valuable positions active through a campaign window.
+  </Card>
+
+  <Card title="Users" icon="wallet" href="/campaigns/how-it-works">
+    Earn rewards by maintaining a qualifying position. The bigger the eligible position and the longer it stays active, the more it can earn.
+  </Card>
+</CardGroup>
+
+## What You Can Build
+
+Campaigns are flexible enough to support different growth strategies without changing the core user experience.
+
+- Bootstrap liquidity for a new market, vault, or ecosystem.
+- Reward loyal users who keep positions active instead of rotating out immediately.
+- Run a targeted campaign for a specific partner, segment, or allowlist.
+- Protect a budget with minimum balances, caps, tiers, or reward-rate limits.
+- Show users clear earnings, accrued rewards, and claimable rewards inside your own product.
+
+For one-time behaviors like minting, swapping, voting, or completing a specific contract interaction, use [One-Time Actions](https://docs.boost.xyz/v2/documentation/overview/introduction) on Boost instead.
+
+## How Campaigns Work
+
+<Steps titleSize="h3">
+  <Step title="Pick the position">
+    Choose the supported token, vault, or protocol position that should count toward rewards.
+  </Step>
+
+  <Step title="Set the campaign strategy">
+    Define the reward token, total budget, schedule, eligibility, and any campaign controls.
+  </Step>
+
+  <Step title="Users participate">
+    Users enter or maintain the eligible position. Their rewards accrue while the position remains eligible.
+  </Step>
+
+  <Step title="Boost handles the operations">
+    Boost tracks positions, calculates accrued rewards, surfaces campaign and user data, and supports reward claims.
+  </Step>
+</Steps>
+
+<Note>
+  **Cross-chain by default.** A campaign can index user activity on one chain and pay rewards on another, so users earn where they already are.
+</Note>
+
+## Campaign Controls
+
+Teams can shape campaigns with a few important controls:
+
+| Control | What it answers |
+| --- | --- |
+| Target position | What user behavior should count? *(e.g., holding a vault token, an LP share, or a staked balance)* |
+| Reward budget | How much are you willing to spend? |
+| Schedule | When should rewards start and stop? |
+| Eligibility | Who should be able to earn? |
+| Caps and tiers | How should rewards be distributed across small and large participants? |
+| Claim window | How long should users have to claim after the campaign ends? |
+
+These controls let you design around a campaign goal instead of forcing every rewards program into the same shape.
+
+## User Experience
+
+From a user's point of view, the earning model is simple:
+
+1. Join an eligible campaign.
+2. Keep the qualifying position active.
+3. Watch rewards accrue over time.
+4. Claim available rewards when they are ready.
+
+Integrations can show campaign opportunities, eligible balances, estimated earnings, accrued rewards, claimed rewards, and claimable rewards.
+
+## Why Teams Use It
+
+Campaigns are built for programs where duration matters.
+
+<CardGroup cols={2}>
+  <Card title="Better alignment" icon="link">
+    Reward users who continue contributing value, instead of paying equally for short-lived and long-lived participation.
+  </Card>
+
+  <Card title="Budget control" icon="gauge">
+    Use campaign rules to manage who earns, how much balance counts, and how rewards are paced.
+  </Card>
+
+  <Card title="Clear user motivation" icon="chart-line">
+    Give users a visible reason to maintain the position that matters to your product.
+  </Card>
+
+  <Card title="Less operational overhead" icon="wand-sparkles">
+    Boost handles tracking, reward accounting, campaign data, and claim infrastructure.
+  </Card>
+</CardGroup>
+
+## Keep Exploring
+
+<CardGroup cols={3}>
+  <Card title="How It Works" icon="book-open" href="/campaigns/how-it-works">
+    Learn the campaign flow from setup through earning and claiming.
+  </Card>
+
+  <Card title="Core Concepts" icon="layer-group" href="/campaigns/reward-calculation">
+    Reward calculation, campaign lifecycle, and campaign modes.
+  </Card>
+</CardGroup>
+
+<Note>
+  Interested in running a campaign? [Reach out to the team on Discord](https://discord.gg/JTCqaekdm) — see [Launch a Campaign](/campaigns/launch-a-campaign) for what onboarding looks like.
+</Note>

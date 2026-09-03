@@ -1,0 +1,127 @@
+---
+title: "Display Campaign Stats"
+description: "Show a live Boost APR, TVL, and participant count next to your pool or vault"
+---
+
+The smallest useful integration: one request, one field, no wallet and no key. If you only ever ship one thing from these docs, ship this.
+
+## The Short Version
+
+```text
+GET https://api-tbi.boost.xyz/v1/campaigns/{campaignId}/stats
+```
+
+Read `boostApyBps`. It is the reward APR in basis points, so `"1550"` means 15.50%. Show it next to your own APR figures.
+
+## Find Your Campaign
+
+If the Boost team gave you campaign IDs, hardcode them. Otherwise discover them by target:
+
+<CodeGroup>
+```bash title="curl"
+curl "https://api-tbi.boost.xyz/v1/campaigns/active?targetChainId=8453&targetAddress=0xYOUR_VAULT"
+```
+
+```ts title="TypeScript"
+const { data } = await tbi.campaigns.active({
+  target: { chainId: 8453, address: vaultAddress },
+});
+```
+</CodeGroup>
+
+Match on the **event chain**, not the reward chain: `target.chainId` is where the position lives. The `target` filter above does that correctly, because `targetChainId` and `targetAddress` both describe the event chain.
+
+<Warning>
+  The bare `chainId` filter is the **reward** chain, not the event chain. `campaigns.active({ chainId: 42161 })` returns campaigns that *pay* on Arbitrum, so it misses a pool tracked on Arbitrum that pays on Base. There is also no event-chain-only filter: passing `targetChainId` without `targetAddress` is rejected with `INVALID_PARAMS`.
+</Warning>
+
+For a Uniswap v4 pool you match on `target.poolId` (the bytes32 pool ID) rather than an address, so there is no address to pair with `targetChainId`. Page through the unfiltered list and match client-side:
+
+```ts
+const { data } = await tbi.campaigns.active({ limit: 100 });
+const campaign = data.find(
+  (c) => c.target.chainId === 42161 && c.target.poolId === yourPoolId,
+);
+```
+
+## Read the Stats
+
+<CodeGroup>
+```bash title="curl"
+curl https://api-tbi.boost.xyz/v1/campaigns/8453:56/stats
+```
+
+```ts title="TypeScript"
+const stats = await tbi.campaigns.stats({ chainId: 8453, campaignIndex: 56 });
+```
+</CodeGroup>
+
+The raw response:
+
+```json
+{
+  "id": { "chainId": 8453, "campaignIndex": 56 },
+  "tvl": "7608022",
+  "participants": 2,
+  "rewardsDistributed": "1949",
+  "rewardsRemaining": "13498051",
+  "boostApyBps": null,
+  "protocolApyBps": "247"
+}
+```
+
+| Field | Meaning |
+| --- | --- |
+| `boostApyBps` | **The reward APR in basis points, as a string.** `"1550"` = 15.50%. This is the number to display |
+| `protocolApyBps` | What the underlying vault or pool pays on its own. `null` when no data source has it |
+| `tvl` | Campaign TVL in USD with 6 decimals. `"7608022"` = $7.61 |
+| `participants` | Wallets that have entered the campaign. A wallet that entered and later withdrew stays counted, so this is not a live holder count |
+| `rewardsDistributed` / `rewardsRemaining` | Reward-token base units. The token and its decimals are on the full campaign object |
+
+`campaigns.stats` returns only the numbers that move, so it is the cheap call to poll. Use `campaigns.get` when you also need the schedule, modes, target, or reward token.
+
+## Handling Rules
+
+Three rules keep the row honest.
+
+**1. `boostApyBps` can be `null`.** It happens before a campaign starts, after it ends, when TVL is zero, and briefly if the reward-token price feed lags.
+
+<Warning>
+  Hide the reward line when `boostApyBps` is `null`. Do not render `0.00%`: a live campaign showing zero reads as broken, and a finished one showing zero reads as a bug.
+</Warning>
+
+**2. Values are strings on the wire.** They can exceed float precision elsewhere in the API, so they are serialized as decimal strings. Parse as an integer and divide by 100 for the percentage. The SDK gives you `bigint` instead.
+
+```ts
+function formatBps(value: bigint | null) {
+  return value === null ? null : `${Number(value) / 100}%`;
+}
+
+const boost = formatBps(stats.boostApyBps);      // "15.5%" or null
+const protocol = formatBps(stats.protocolApyBps);
+```
+
+**3. Never sum the two APYs silently.** `boostApyBps` and `protocolApyBps` measure different things and can each be `null` independently. Show them as separate lines, or combine them only where your UI explicitly presents a total estimate and says so.
+
+## Polling and Caching
+
+Stats update on the reward checkpoint cadence of minutes, not seconds. **Cache responses for 60 seconds or more.** There is no API key, so there is no per-partner quota to raise; the ceiling is shared and rate limits are per-IP.
+
+## Try It Live
+
+This campaign is finalized, so it returns the exact shape above with `boostApyBps: null`, a useful way to check your null handling before a live campaign exists:
+
+```bash
+curl https://api-tbi.boost.xyz/v1/campaigns/8453:56/stats
+```
+
+## Keep Exploring
+
+<CardGroup cols={2}>
+  <Card title="Show User Rewards" href="/developers/guides/show-user-rewards">
+    Move from campaign-level numbers to per-user earnings.
+  </Card>
+  <Card title="Campaigns, IDs, and Chains" href="/developers/concepts/campaigns">
+    Target shapes, event versus reward chains, and campaign modes.
+  </Card>
+</CardGroup>

@@ -1,0 +1,40 @@
+---
+title: "API Overview"
+description: "The public REST API behind Rabbithole campaigns: base URL, authentication, and conventions"
+---
+
+The Rabbithole campaign API is a public, read-and-claim surface. It serves campaign data, user rewards, claim proofs, and Forwarder deposit calldata. It never takes custody of funds and never changes state on your behalf. Claims and deposits are transactions your users sign.
+
+## Base URL
+
+```text
+https://api-tbi.boost.xyz
+```
+
+Every endpoint in this reference lives under `/v1`. The interactive playground on each page sends real requests to production.
+
+## Authentication
+
+There is none. Every endpoint is public, and there is no API key or signup.
+
+If you are building an integration, ask the Boost team for a partner `refId` and send it as the `x-boost-ref-id` header on every request. It attributes usage to your integration and is not a secret. Everything works without it.
+
+## Conventions
+
+- **Campaign IDs** are `chainId:campaignIndex`, for example `8453:56`. The chain in the ID is the reward chain, where claims happen.
+- **Amounts** are decimal strings in the token's smallest unit. Convert with the `decimals` field on the accompanying token object.
+- **Addresses** are lowercase hex. Responses accept either case on input.
+- **Errors** return a JSON envelope with a stable `code`. See [Errors](/developers/errors).
+
+Full detail on IDs, chains, and field types is in [Data Conventions](/developers/concepts/data-conventions).
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="Developer Quickstart" icon="bolt" href="/developers/quickstart">
+    Discover a campaign, read rewards, and claim in five steps.
+  </Card>
+  <Card title="TypeScript SDK" icon="code" href="/developers/sdk">
+    A typed client that wraps these endpoints and builds claim transactions.
+  </Card>
+</CardGroup>

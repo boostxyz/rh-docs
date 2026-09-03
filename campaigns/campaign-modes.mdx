@@ -1,0 +1,288 @@
+---
+title: "Campaign Modes"
+description: "Stackable rules that shape who earns and how much during a campaign"
+---
+
+By default, every eligible token in a campaign earns at the same rate. Modes change that. They are stackable rules that filter, cap, weight, or reshape the reward math so a campaign can target a specific outcome instead of paying everyone the same way.
+
+A campaign can run with no modes, one mode, or several modes stacked together. When more than one is active, they apply in a deterministic order so the math stays predictable.
+
+## Mode Catalog
+
+Modes fall into three groups by what they do.
+
+<CardGroup cols={3}>
+  <Card title="Eligibility filters" icon="filter">
+    Decide which balance counts toward rewards in the first place.
+  </Card>
+  <Card title="Position caps" icon="gauge">
+    Limit how much of the reward pool any one user — or the whole campaign — can absorb.
+  </Card>
+  <Card title="Reward shaping" icon="sliders">
+    Change the rate at which the reward pool drips out, or weight rewards by position size.
+  </Card>
+</CardGroup>
+
+---
+
+## Eligibility Filters
+
+### Minimum Balance
+
+Set a floor. Users below the threshold earn nothing; users at or above the threshold earn on their full balance.
+
+**When to use it.** Filter out dust positions. Require meaningful skin in the game so the reward pool focuses on engaged users.
+
+**Example.** A campaign sets the minimum at 1,000 tokens.
+
+| User holds | Effective balance |
+| --- | --- |
+| 500 tokens | 0 |
+| 1,000 tokens | 1,000 |
+| 50,000 tokens | 50,000 |
+
+The threshold is binary — once you cross it, the full balance counts, not just the portion above the floor.
+
+**Restrictions.** Cannot exceed `depositCap` if both are set.
+
+---
+
+### New Capital
+
+Take a snapshot of every wallet's balance at a chosen block. From that point on, only the *increase* over the snapshot counts. Existing capital is invisible to the campaign.
+
+**When to use it.** Drive new deposits, not pay existing holders. Useful when the goal is growth rather than retention of an existing base.
+
+**Example.** Snapshot taken at block 18,000,000.
+
+| User | Balance at snapshot | Current balance | Effective balance |
+| --- | --- | --- | --- |
+| Alice | 5,000 | 5,000 | 0 |
+| Bob | 0 | 2,000 | 2,000 |
+| Carol | 1,000 | 4,000 | 3,000 |
+
+Alice earns nothing unless she adds more. Bob earns on his full new position. Carol earns on the 3,000 she added.
+
+---
+
+## Position Caps
+
+### Deposit Cap
+
+Cap the eligible balance for any individual user. A user can hold more, but anything above the cap doesn't contribute to rewards.
+
+**When to use it.** Spread the reward pool across more participants. Prevent a single whale from absorbing most of the rewards.
+
+**Example.** Cap set at 10,000 tokens.
+
+| User holds | Effective balance |
+| --- | --- |
+| 5,000 | 5,000 |
+| 10,000 | 10,000 |
+| 100,000 | 10,000 |
+
+The user with 100,000 still holds their full position — the cap only affects what counts toward rewards.
+
+---
+
+### Capital Cap
+
+Cap the *total* eligible balance summed across all users. Once the cap is hit, additional deposits stop counting until someone exits and frees up room.
+
+**When to use it.** Bound the reward rate. With a known cap, the worst-case earning rate per token is `rewardRate ÷ cap` — useful when you want predictable APY behavior without the complexity of Fixed APY.
+
+**Example.** Cap set at 1,000,000 USDC of eligible balance.
+
+- The first \$1M of deposits all count toward rewards.
+- A user who deposits when the campaign is already at the cap accrues nothing on those new tokens until existing capital exits.
+- A user who exits frees up room for the next deposit, in order.
+
+---
+
+### Participant Cap
+
+Limit the campaign to a fixed number of distinct earners. Once the cap is reached, later participants can hold the position but accrue nothing.
+
+**When to use it.** Gated programs where headcount matters more than capital — VIP campaigns, partner allowlists, capped beta programs. Pairs naturally with allowlist eligibility.
+
+**Example.** Cap set at 100 participants. Whoever is among the first 100 to enter an eligible position earns. Number 101 holds the position but accrues nothing.
+
+**Restrictions.** Single-target campaigns only.
+
+---
+
+## Reward Shaping
+
+### Fixed APY
+
+Pay out at a guaranteed annualized rate, regardless of how much capital is in the campaign. The reward rate adjusts automatically to maintain the target APY.
+
+**When to use it.** Predictable user-side ROI. Marketing-friendly framing: "Earn 10% APY for holding." Removes the "early adopter advantage" — the APY is the same whether one user is in or one thousand.
+
+**Example.** Target APY set at 10%.
+
+A user deposits \$5,000 into the campaign on day one. They earn at 10% APY for as long as the position is in:
+
+- After 30 days, they've earned roughly \$41.
+- After 6 months, roughly \$250.
+- Over a full year, roughly \$500.
+
+It doesn't matter whether they're the only participant or sharing the campaign with thousands of others — the rate stays at 10%. What changes with participation is how fast the campaign budget is consumed: more capital in means rewards drain faster, and the campaign can end earlier than scheduled if usage outpaces the budget.
+
+**Caveats.**
+
+- The campaign budget is still a ceiling. If usage is much larger than expected, the campaign ends early when the budget runs out.
+- The effective rate uses the live price of the reward token, so APY remains stable even if the reward token's price moves.
+- Mutually exclusive with Capped APY.
+
+---
+
+### Capped APY
+
+Set a ceiling on the effective APY. The natural rate runs as usual, but when it would exceed the ceiling — typically early in a campaign before participation builds up — the rate is throttled to the cap.
+
+**When to use it.** Solve the cold-start problem. In the early days of a campaign, before users have noticed and entered, the natural APY can spike to absurd numbers — the very first user might see 5,000% APY because the reward pool is divided across very little capital. Capping the APY smooths user expectations and keeps the campaign from front-loading rewards onto whoever happened to be first in.
+
+**Example.** Cap set at 10% APY.
+
+- If natural APY would be 6%, users earn 6%.
+- If natural APY would be 200% (early in the campaign, few participants), it's throttled to 10%.
+- The campaign still ends at its scheduled time. Rewards held back during throttled periods stay in the pool and become recoverable budget when the campaign finalizes.
+
+**Restrictions.** Mutually exclusive with Fixed APY.
+
+---
+
+### Deposit Tiers
+
+Larger positions earn more per token, not just more in total. Tiers define balance breakpoints, each with a multiplier above 1x.
+
+**When to use it.** Reward bigger commitments super-proportionally. Encourage users to size up rather than spread thin across many small positions.
+
+**Example.** Three tiers:
+
+| Tier | Minimum balance | Multiplier |
+| --- | --- | --- |
+| Bronze | 1,000 | 1.5x |
+| Silver | 5,000 | 2x |
+| Gold | 25,000 | 3x |
+
+Walking through users:
+
+| User holds | Tier | Effective balance for rewards |
+| --- | --- | --- |
+| 500 | None | 500 (1x) |
+| 1,500 | Bronze | 2,250 (1.5x) |
+| 6,000 | Silver | 12,000 (2x) |
+| 30,000 | Gold | 90,000 (3x) |
+
+The multiplier applies to the full balance — once a user qualifies for Silver, every token in their position earns at 2x, not just the tokens above the Silver threshold.
+
+---
+
+## Coming Soon
+
+### Cliff
+
+<Note>
+  Cliff is in active design and not yet available on production campaigns. The semantics below are confirmed; ship date is TBD.
+</Note>
+
+Require users to maintain a non-zero position continuously for a minimum window before any rewards become claimable. If a user's balance hits zero at any point inside the cliff window, they forfeit every reward they had been accruing — not just future earnings. Users who hold through the entire cliff receive their full accrued rewards in the next snapshot after their cliff expires.
+
+**When to use it.** Filter out users who deposit, claim a quick reward, and exit. The cliff makes early exit a real cost: breaking it forfeits everything earned during the window, which keeps the reward pool flowing toward genuine long-term holders.
+
+**Example.** Cliff set at 30 days.
+
+- **Alice** deposits and holds her position continuously for 30 days. Once she clears the cliff, her accrued rewards become claimable in the next snapshot.
+- **Bob** deposits, holds for 20 days, then withdraws to zero on day 21. He forfeits everything he had earned for those 20 days.
+- **Carol** deposits 1,000 tokens, then withdraws 600 on day 5 to keep 400. Partial withdrawals don't break the cliff. She keeps accruing on her remaining 400 tokens and clears the cliff at day 30.
+- **Dave** breaks his cliff on day 10 by withdrawing to zero, forfeiting his rewards so far. He re-deposits on day 15 and gets a fresh start: a new 30-day cliff anchored at day 15. His forfeited rewards stay in the pool — they aren't restored.
+
+**Key behavior.**
+
+- The cliff is measured per user, starting from their first qualifying deposit — not from campaign start. Late joiners get their own full window.
+- Only a balance hitting zero breaks the cliff. Top-ups and partial withdrawals all preserve it.
+- A user who breaks the cliff can try again. Re-depositing starts a fresh cliff window with a new anchor; previously forfeited rewards do not come back.
+- Forfeited rewards stay in the campaign pool and can be recovered by the creator at the end of the campaign.
+- Deposits made too late to clear the cliff before the campaign ends won't qualify. Once the campaign reaches `endTime − cliffDays`, the system stops accepting new triggers (and fresh attempts) so every cliff window has time to finish.
+
+**Restrictions.** `cliffDays` is capped at 50% of the campaign's total duration, which keeps at least half the campaign open for fresh deposits. A 30-day campaign supports a cliff up to 15 days; a 90-day campaign supports up to 45.
+
+---
+
+## How Modes Stack
+
+When multiple modes are active, they apply in a fixed order. Each step transforms the previous step's output.
+
+<Steps titleSize="h3">
+  <Step title="New Capital">
+    Subtract the snapshot balance. The result is the user's "new" balance. Existing capital becomes invisible from this step onward.
+  </Step>
+  <Step title="Minimum Balance">
+    If the result is below the floor, zero it out. Otherwise pass through.
+  </Step>
+  <Step title="Deposit Cap">
+    Clamp the result at the per-user cap.
+  </Step>
+  <Step title="Deposit Tiers">
+    Look up the tier that matches the clamped result. Multiply the full balance by that tier's multiplier.
+  </Step>
+</Steps>
+
+The Capital Cap, Participant Cap, Fixed APY, and Capped APY modes don't slot into this chain — they affect the campaign at different points:
+
+- **Capital Cap** — applied during entry, decides whether new deposits register at all.
+- **Participant Cap** — applied during entry, decides whether a new wallet becomes eligible.
+- **Fixed APY** and **Capped APY** — applied to the reward rate, not the user's balance.
+
+### Worked example
+
+A campaign uses `newCapitalOnly` (snapshot at block X), `minBalance` (1,000 tokens), and `depositTiers` (Bronze 1k → 1.5x, Silver 5k → 2x).
+
+A user held 500 tokens at the snapshot and now holds 8,000 tokens. The math:
+
+1. **New Capital.** Subtract snapshot: `8,000 − 500 = 7,500`.
+2. **Minimum Balance.** `7,500 ≥ 1,000`, so the balance passes through unchanged.
+3. **Deposit Tiers.** `7,500` qualifies for Silver. Multiplier = 2x. Effective balance = `15,000`.
+
+The user earns rewards as if they were holding 15,000 tokens.
+
+---
+
+## Choosing Modes
+
+Most campaigns use zero or one mode. Stack only when the goal genuinely needs it.
+
+| Goal | Mode to consider |
+| --- | --- |
+| Pay only meaningful positions | Minimum Balance |
+| Reward growth, not existing holders | New Capital |
+| Spread rewards across more participants | Deposit Cap |
+| Bound the reward rate / cap exposure | Capital Cap |
+| Run a closed program with limited seats | Participant Cap |
+| Advertise a clean APY number | Fixed APY |
+| Tame the early-adopter spike | Capped APY |
+| Encourage users to size up | Deposit Tiers |
+| Reward genuine long-term holders | Cliff *(coming soon)* |
+
+<Note>
+  Not sure which combination fits your campaign? [Reach out to the team on Discord](https://discord.gg/JTCqaekdm) — we'll walk through the goal and suggest a setup.
+</Note>
+
+## Keep Exploring
+
+<CardGroup cols={2}>
+  <Card title="Reward Calculation" icon="calculator" href="/campaigns/reward-calculation">
+    How eligible balance and time held translate into rewards.
+  </Card>
+  <Card title="Campaign Lifecycle" icon="clock-rotate-left" href="/campaigns/campaign-lifecycle">
+    The phases a campaign moves through, from setup to claim.
+  </Card>
+  <Card title="Launch a Campaign" icon="rocket" href="/campaigns/launch-a-campaign">
+    What it looks like to bring a campaign to life with the Boost team.
+  </Card>
+  <Card title="Glossary" icon="book" href="/campaigns/glossary">
+    Quick definitions for terms used across the docs.
+  </Card>
+</CardGroup>

@@ -1,0 +1,65 @@
+---
+title: "FAQ"
+description: "Answers to the questions people ask first about earning on Rabbithole"
+---
+
+## Earning
+
+<AccordionGroup>
+  <Accordion title="Does Rabbithole hold my money?">
+    No. Your deposit goes into the underlying protocol, and the receipt token sits in your wallet. Rabbithole reads your balance from the chain. Reward budgets sit in each campaign's own contract. See [Where Your Money Sits](/rabbithole/introduction#where-your-money-sits).
+  </Accordion>
+  <Accordion title="What does the APY mean?">
+    It is the annualized reward rate at this moment, on top of whatever the protocol itself pays. For most campaigns it floats: more deposits mean a lower rate, fewer mean a higher one. **Capped APY** campaigns never pay above the shown cap. **Fixed APY** campaigns pay the shown rate until the budget runs out.
+  </Accordion>
+  <Accordion title="Why is the APY so high on a new campaign?">
+    Early on, the reward drip is split among very few deposits, so the rate per dollar is huge. Most campaigns use a cap to keep this sensible. Expect the rate to settle as people join.
+  </Accordion>
+  <Accordion title="I already had money in this vault. Why am I not earning?">
+    Two likely reasons. Campaigns marked **New capital only** count only deposits made after the campaign started. Campaigns marked **Only deposits via Rabbithole earn rewards** need your first deposit to go through Rabbithole. In both cases a fresh deposit through the app fixes it.
+  </Accordion>
+  <Accordion title="Can I withdraw at any time?">
+    Yes. Withdraw from the protocol as you normally would. Accrual stops on what you withdraw, and everything you earned before stays claimable.
+  </Accordion>
+  <Accordion title="What is TVE?">
+    Total value earned through this campaign so far. TVL, by contrast, is the total deposited in the underlying protocol, including deposits that have nothing to do with Rabbithole.
+  </Accordion>
+</AccordionGroup>
+
+## Claiming
+
+<AccordionGroup>
+  <Accordion title="My earnings are going up but I cannot claim yet. Why?">
+    Rewards accrue every second, but they become claimable only when the campaign publishes a snapshot onchain, which happens periodically. Your live counter is always ahead of the claimable amount. Wait for the next snapshot.
+  </Accordion>
+  <Accordion title="Do I lose anything by claiming late?">
+    No. Claims are cumulative. Claiming once at the end pays the same total as claiming every week. The only deadline is the claim window after a campaign ends, usually 60 days.
+  </Accordion>
+  <Accordion title="Which network do I claim on?">
+    The campaign's **Earn on** chain, shown in the campaign panel. It can differ from the chain you deposited on. Rabbithole switches your wallet when you claim.
+  </Accordion>
+  <Accordion title="Who pays the gas?">
+    You pay network gas for deposits, withdrawals, and claims. Rabbithole charges you nothing.
+  </Accordion>
+</AccordionGroup>
+
+## Tiers, Raffle, and Referrals
+
+<AccordionGroup>
+  <Accordion title="Why has my rank not changed after claiming?">
+    The weekly leaderboard is rebuilt about once an hour. Give it up to an hour.
+  </Accordion>
+  <Accordion title="Why did my tier drop?">
+    Tiers come from a rolling 7-day window. When a strong earning day rolls out of the window, your rank can fall even if you did nothing. See [Tiers and Leaderboard](/rabbithole/tiers-and-leaderboard).
+  </Accordion>
+  <Accordion title="I reached a higher tier. Why did my raffle entries not change?">
+    Entries are added weekly for the tier you hold at that week's drop. A tier change counts from the next drop. See [Raffle](/rabbithole/raffle).
+  </Accordion>
+  <Accordion title="When are referral earnings paid?">
+    After the campaign ends and is finalized. Until then the amount on the Referral earnings page is an estimate. See [Referrals](/rabbithole/referrals).
+  </Accordion>
+</AccordionGroup>
+
+## Still Stuck
+
+Join the [Discord](https://discord.gg/JTCqaekdm) and ask in the support channel.

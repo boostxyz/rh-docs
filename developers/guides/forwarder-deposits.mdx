@@ -1,0 +1,155 @@
+---
+title: "Forwarder Deposits"
+description: "Route deposits through the Boost Forwarder for campaigns that require it"
+---
+
+Some campaigns only reward positions that entered through the **Boost Forwarder**. If you want your users to earn from one of those, your deposit flow has to route through it. This guide covers how to tell, and what to build.
+
+The product-level version of this mechanic is [Earning Activation](/campaigns/earning-activation); read that for why a campaign would require it. This page is the implementation.
+
+## When You Need This
+
+A campaign carries `requiresForwarderDeposit: true`. Two things follow:
+
+- **Discovery hides it by default.** `campaigns.list` and `campaigns.active` exclude forwarder-required campaigns unless you pass `includeForwarderRequired: true`, so integrations that do not route through the Forwarder never surface campaigns their users cannot earn from.
+- **`campaigns.get` returns it regardless.** If you already have the ID, the flag never blocks a read.
+
+```ts
+const { data } = await tbi.campaigns.active({
+  target: { chainId: 8453, address: vaultAddress },
+  includeForwarderRequired: true,
+});
+
+const forwarderOnly = data.filter((c) => c.requiresForwarderDeposit);
+```
+
+<Note>
+  Activation is a **one-time** event. Once a user's first deposit routes through the Forwarder, every later action (deposits, withdrawals, transfers) counts normally. They never have to use the Forwarder again.
+</Note>
+
+## List Supported Targets
+
+<CodeGroup>
+```bash title="curl"
+curl https://api-tbi.boost.xyz/v1/forwarder/targets
+```
+
+```ts title="TypeScript"
+const targets = await tbi.forwarder.targets();
+
+const supported = targets.find(
+  (t) =>
+    t.chainId === campaign.target.chainId &&
+    t.targetAddress === campaign.target.address,
+);
+```
+</CodeGroup>
+
+A target looks like this:
+
+```json
+{
+  "chainId": 480,
+  "targetAddress": "0x348831b46876d3df2db98bdec5e3b4083329ab9f",
+  "forwarderAddress": "0x7a33bcf7588190e3123235db746339045207bb93",
+  "acceptedToken": { "address": "0x2cfc…3003", "decimals": 18, "symbol": "WLD" },
+  "acceptedTokens": [{ "address": "0x2cfc…3003", "decimals": 18, "symbol": "WLD" }],
+  "shareToken": { "symbol": "Re7WLD", "decimals": 18 },
+  "protocol": "Morpho Re7",
+  "name": "Morpho Re7 WLD",
+  "supportedActions": ["deposit"],
+  "depositActionType": "erc4626-deposit"
+}
+```
+
+| Field | Meaning |
+| --- | --- |
+| `targetAddress` | The vault or market being deposited into |
+| `forwarderAddress` | The Boost Forwarder. Deployed via `CREATE2`, so it is the same address on every chain |
+| `acceptedToken` | The default input asset |
+| `acceptedTokens` | Every directly depositable asset. Native ETH is the zero address |
+| `shareToken` | The receipt token the user ends up holding |
+| `depositActionType` | How the deposit is executed. One of `erc4626-deposit`, `aave-v3-pool-supply`, `compound-v3-supply`, `compound-v2-mint`, `aave-staked-token-stake`, `lido-earn-deposit`, or `midas-deposit-instant` |
+| `supportedActions` | Currently `["deposit"]` on every target |
+
+<Warning>
+  **There is no withdraw path through the Forwarder.** Every registered target supports deposits only. Users exit through the protocol directly, exactly as they would without Boost, and doing so does not affect their activation.
+</Warning>
+
+Call this endpoint to preflight your UI: if a campaign's target is not in the list, do not offer the deposit.
+
+## Build the Deposit
+
+<CodeGroup>
+```bash title="curl"
+curl -X POST https://api-tbi.boost.xyz/v1/forwarder/deposit \
+  -H "Content-Type: application/json" \
+  -d '{
+    "targetChainId": 8453,
+    "targetAddress": "0xTARGET",
+    "amount": "1000000",
+    "sender": "0xUSER"
+  }'
+```
+
+```ts title="TypeScript"
+const deposit = await tbi.forwarder.buildDeposit({
+  target: campaign.target,
+  amount: 1_000_000n,
+  sender: userAddress,
+});
+```
+</CodeGroup>
+
+The SDK takes the campaign's `target` object and flattens it for you; over raw REST you send `targetChainId` and `targetAddress` as separate top-level fields. `receiver` is optional and defaults to `sender`.
+
+The response is an **ordered list of unsigned transactions**. An ERC-20 approval is included only when the sender's current allowance is insufficient, so the list is one or two entries depending on state. Do not assume a fixed length.
+
+The response also echoes back `target`, `forwarderAddress`, and two constants that describe what was built: `action: "deposit"` and `flow: "direct"`. Both are single-valued in V1; treat a different value as a signal to re-read these docs.
+
+For a multi-asset target, pass `inputToken` to choose the asset. Only two multi-asset targets exist today: Lido Earn ETH (WETH, wstETH, native ETH) and Lido Earn USD (USDC, USDT):
+
+```ts
+const deposit = await tbi.forwarder.buildDeposit({
+  target: campaign.target,
+  amount: 1_000_000_000_000_000_000n,
+  sender: userAddress,
+  inputToken: "0x0000000000000000000000000000000000000000", // native ETH
+});
+```
+
+Omit `inputToken` and the deposit uses the target's default `acceptedToken`. Passing a token the target does not accept raises `TbiValidationError`, as does an unregistered target.
+
+## Submit in Order
+
+```ts
+for (const tx of deposit.transactions) {
+  const hash = await walletClient.sendTransaction({
+    account: userAddress,
+    chain: walletClient.chain,
+    to: tx.to,
+    data: tx.data,
+    value: tx.value,
+  });
+  await publicClient.waitForTransactionReceipt({ hash });
+}
+```
+
+<Warning>
+  Wait for each transaction to confirm before sending the next. The deposit will revert if the approval has not landed.
+</Warning>
+
+## V1 Limits
+
+`buildDeposit` supports **direct, same-chain deposits into registered targets**. There is no swap or bridge routing in this endpoint; the input asset must be one the target accepts, on the chain the target lives on.
+
+## Keep Exploring
+
+<CardGroup cols={2}>
+  <Card title="Earning Activation" href="/campaigns/earning-activation">
+    Why a campaign requires Forwarder deposits, and what it does and does not restrict.
+  </Card>
+  <Card title="Campaigns, IDs, and Chains" href="/developers/concepts/campaigns">
+    Target shapes and what discovery returns.
+  </Card>
+</CardGroup>

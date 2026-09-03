@@ -1,0 +1,188 @@
+---
+title: "Campaign Lifecycle"
+description: "The phases a campaign moves through, from setup to claim window close"
+---
+
+Every campaign moves through a predictable arc. Knowing which phase a campaign is in — and what's possible at that phase — helps with launch planning, in-product UI, and answering user questions when something looks off.
+
+The arc is the same for every campaign:
+
+<Steps titleSize="h3">
+  <Step title="Configured">
+    Setup is done, the campaign is on-chain, but earning hasn't started yet.
+  </Step>
+  <Step title="Active">
+    The campaign is live. Users earn continuously, claims open as snapshots publish.
+  </Step>
+  <Step title="Ended">
+    Earning stops, but the system is still settling — final snapshots roll up the last rewards.
+  </Step>
+  <Step title="Finalized">
+    The campaign is settled. Unspent budget can be recovered. Users keep claiming.
+  </Step>
+  <Step title="Closed">
+    The claim window has expired. Anything still unclaimed can be reclaimed by the creator.
+  </Step>
+</Steps>
+
+A campaign can also leave the main arc early in a couple of ways, covered further down.
+
+---
+
+## Phase by phase
+
+### Configured
+
+The campaign config is committed, the on-chain contract is deployed, and the reward budget is locked in — but the campaign's `startTime` hasn't hit yet.
+
+Nothing user-facing happens. This is the team's window to:
+
+- Review the live config one last time.
+- Seed any UI pieces that surface the campaign.
+- Coordinate launch comms.
+
+If the team needs to change anything material — eligibility, targets, modes — the campaign has to be cancelled and re-launched. Configuration is locked at deploy.
+
+---
+
+### Active
+
+`startTime` has passed and `endTime` hasn't (or, in some setups, the budget hasn't been fully paid out — see [Automatic early end](#automatic-early-end) below). Users earn continuously while their position is eligible.
+
+What's happening behind the scenes:
+
+- Boost watches the chain for relevant events and updates earnings as positions change.
+- A reward snapshot publishes on a regular cadence so claims become available shortly after the campaign goes live.
+- The team can watch the campaign run on [rabbithole.gg](https://rabbithole.gg) — TVL, participants, distributed rewards, and live leaderboard stats are all surfaced there.
+
+If the team needs to **end the campaign early**, this is the only window for that. See [Mid-flight adjustments](#mid-flight-adjustments) below.
+
+---
+
+### Ended
+
+`endTime` has passed (or the campaign has otherwise stopped — see [Mid-flight adjustments](#mid-flight-adjustments)). Earning stops for everyone, but the campaign isn't fully wrapped up yet.
+
+A few things are still in motion:
+
+- The final reward snapshot rolls up the last few hours of earnings.
+- Users keep claiming on the same schedule as during the active phase.
+- The team can no longer change anything about the campaign.
+
+This phase is short — usually a few hours — and ends as soon as the operator settles the final state.
+
+---
+
+### Finalized
+
+The final merkle snapshot is published and locked. Total distributed rewards are confirmed.
+
+At this point, the creator can recover any unspent budget. That can include:
+
+- Rewards from periods when no one was participating.
+- Rewards held back by Capped APY when the natural rate would have exceeded the cap.
+- Forfeited rewards from broken cliffs (once Cliff is live).
+
+Claims continue to work for the rest of the claim window.
+
+---
+
+### Closed
+
+The claim window expires. Standard campaigns run a **60-day claim window** measured from finalization, but this is configurable per campaign.
+
+Once the window closes:
+
+- New claims stop being accepted.
+- Anything still unclaimed becomes recoverable by the creator through the same withdraw flow.
+- The campaign is fully wound down.
+
+---
+
+## Mid-flight adjustments
+
+A campaign can leave the active phase before its scheduled `endTime` in two ways.
+
+### Early termination
+
+Creators (or the protocol admin in emergencies) can end a campaign before its scheduled `endTime`.
+
+- Earning stops at the moment of cancellation.
+- Already-accrued rewards stay claimable on the normal schedule.
+- The campaign skips straight to settlement: ended → finalized → claim window.
+
+Use this when goals shift, when a partner relationship changes, or when something in the underlying market makes the campaign no longer relevant.
+
+### Automatic early end
+
+A **Fixed APY** campaign ends as soon as its reward budget is fully paid out, even if `endTime` hasn't been reached. This happens when participation is higher than the team anticipated — the budget drains faster than the original schedule, and the campaign wraps up the moment the last reward is distributed.
+
+Other modes don't trigger this. **Capped APY** never moves the schedule — when the cap binds, less reward gets distributed per second, and the held-back budget simply stays in the pool as recoverable funds at finalization. The various caps and filters affect who earns and how much, but they never push the campaign past — or short of — the scheduled `endTime`.
+
+When a Fixed APY campaign ends early, the flow is the same as any other ending: status flips to `ended`, the final snapshot rolls up the last earnings, and the campaign moves into Finalized once the operator settles.
+
+### What can't change
+
+Once a campaign launches, the rules are locked:
+
+- Reward token
+- Targets (which positions count)
+- Eligibility (open, allowlist, verification)
+- Modes (caps, tiers, fixed APY, etc.)
+- Schedule
+
+Any meaningful change requires a new campaign.
+
+---
+
+## What users see at each phase
+
+| Phase | What users can do |
+| --- | --- |
+| Configured | View the campaign (if surfaced) and prepare to enter at launch. |
+| Active | Hold an eligible position. Watch rewards accrue. Claim as snapshots publish. |
+| Ended | Claim accrued rewards. New earning has stopped. |
+| Finalized | Claim accrued rewards. Final totals are locked. |
+| Closed | Claims rejected. Any unclaimed rewards can be reclaimed by the creator. |
+
+---
+
+## What teams do at each phase
+
+| Phase | Team actions |
+| --- | --- |
+| Configured | Final review, marketing prep, integration testing. |
+| Active | Monitor stats. End early if priorities shift. |
+| Ended | Wait for settlement; no actions required. |
+| Finalized | Recover unspent budget if applicable. |
+| Closed | Recover any unclaimed leftover rewards. |
+
+---
+
+## Recoverable funds
+
+When a campaign winds down, leftover budget can show up in a few places. All of it is recoverable by the creator through the same withdraw flow:
+
+- **Undistributed budget** — periods when no one was participating, so no rewards were earned.
+- **Throttled rewards** — when Capped APY held the rate below its natural value, the saved budget stays in the pool.
+- **Forfeited rewards** — when Cliff ships, rewards from broken cliffs flow back here.
+- **Unclaimed rewards** — after the claim window closes, anything users didn't pull is returned to the creator.
+
+Nothing gets stuck. Everything that isn't paid out to a user eventually flows back.
+
+## Keep Exploring
+
+<CardGroup cols={2}>
+  <Card title="Reward Calculation" icon="calculator" href="/campaigns/reward-calculation">
+    How eligible balance and time held translate into rewards.
+  </Card>
+  <Card title="Campaign Modes" icon="sliders" href="/campaigns/campaign-modes">
+    The stackable rules that shape who earns and how much.
+  </Card>
+  <Card title="Launch a Campaign" icon="rocket" href="/campaigns/launch-a-campaign">
+    What it looks like to bring a campaign live with the Boost team.
+  </Card>
+  <Card title="Glossary" icon="book" href="/campaigns/glossary">
+    Quick definitions for terms used across the docs.
+  </Card>
+</CardGroup>

@@ -1,0 +1,127 @@
+---
+title: "How It Works"
+description: "How a campaign actually runs — from goal to earning to claim"
+---
+
+A campaign rewards users for **how much they hold and how long they hold it**. Instead of paying on a single qualifying action, the campaign streams rewards every second a user's position is open and stops the moment they exit.
+
+This page walks through how a campaign actually runs — what the protocol decides, what users experience, where funds sit, and how rewards flow from budget to wallet.
+
+## The Earning Model
+
+Rewards don't unlock at fixed intervals. They accrue every second, distributed in real time across everyone holding a qualifying position at that moment.
+
+Two things shape what a user earns:
+
+- **Position size** — the eligible balance they hold.
+- **Time held** — how long that balance stays active inside the campaign window.
+
+Bigger positions earn faster. Smaller positions still earn, just at a smaller share of the moment. When a user enters or exits, their rate adjusts immediately. Already-accrued rewards stay locked in — exiting a position doesn't forfeit anything earned along the way.
+
+## The Campaign Loop
+
+<Steps titleSize="h3">
+  <Step title="A protocol defines the goal">
+    Pick the on-chain position the campaign should reward — a token, vault share, LP position, or another supported asset.
+  </Step>
+
+  <Step title="Boost turns the goal into a campaign">
+    Set the eligibility, reward token, budget, schedule, and any [modes](/campaigns/campaign-modes). Once funded, the campaign goes live at its scheduled start time.
+  </Step>
+
+  <Step title="Users participate">
+    Users enter or maintain the eligible position. Rewards accrue while the position stays active and stop the moment it exits.
+  </Step>
+
+  <Step title="Rewards become claimable">
+    Boost rolls accrued earnings into periodic on-chain snapshots. Users claim cumulative rewards whenever they're ready — partial, in full, now, or at the end.
+  </Step>
+</Steps>
+
+<Note>
+  For the phase-by-phase view of a campaign's life — pending, active, ended, finalized, claim window — see [Campaign Lifecycle](/campaigns/campaign-lifecycle).
+</Note>
+
+## What Each Side Does
+
+### What protocols decide
+
+Protocols set the shape of the campaign — what users are doing, who counts, and what they're earning.
+
+| Decision | What it controls |
+| --- | --- |
+| Targets | Which positions or assets count |
+| Reward token and budget | What's being paid out, and how much |
+| Schedule | When earning starts and ends |
+| Eligibility | Open, allowlist-gated, or verification-gated |
+| Modes | Caps, tiers, fixed APY, and other reward shaping |
+
+Once the campaign is live, the configuration is committed. Reward math runs on the rules set at launch.
+
+### What Boost handles
+
+Boost runs the operational layer end to end:
+
+- Indexes the relevant on-chain events.
+- Calculates each user's earnings continuously.
+- Applies eligibility rules, caps, and any campaign-specific modes.
+- Produces distribution snapshots and publishes them on-chain.
+- Supports claim transactions when rewards are ready.
+
+Protocols don't track positions, perform reward math, or maintain claim infrastructure.
+
+### What users experience
+
+From a user's point of view, the loop is simple:
+
+1. Hold or open the eligible position.
+2. Watch rewards accrue while the position stays active.
+3. Claim whenever they're ready — once at the end, periodically, in full or in part.
+
+Apps integrating with TBI can surface the same loop directly in their own product: the campaigns a user qualifies for, what they're earning right now, and what's available to claim.
+
+## Where Funds Sit
+
+Two pots of money live separately during a campaign.
+
+**User principal** stays in the protocol or vault where the position lives. Boost does not custody user deposits or move user principal into a Boost-controlled pool. Users stake, deposit, or hold exactly the way they would without a campaign attached.
+
+**Reward funds** live in campaign smart contracts deployed at launch. Reward tokens sit there and pay out to users as they claim earned rewards.
+
+After a campaign ends, any reward funds that were never allocated — undistributed, throttled, or forfeited — can be reclaimed by the creator. Users then have the campaign's [claim window](/campaigns/campaign-lifecycle#schedule) (60 days for standard campaigns) to claim what they earned. After the window closes, any still-unclaimed reward funds can also be reclaimed.
+
+## Example Campaign
+
+A protocol wants users to keep capital in a vault for 90 days. It launches a campaign with a fixed reward budget and points it at the vault share token.
+
+During the campaign:
+
+- Users holding vault shares are eligible to earn.
+- A user with a larger eligible balance earns more than a user with a smaller balance.
+- A user who stays in the vault the full 90 days earns more than a user who exits after a few weeks.
+- A user who joins on day 60 still earns for the time they participate.
+- Users can claim accrued rewards along the way as snapshots publish — they don't have to wait for the end.
+
+The protocol gets a campaign designed around retention, not just initial entry.
+
+## Beyond the Basics
+
+The mechanics above describe the default flow. Most campaigns layer additional rules on top — minimum balances, tiered earning, fixed APY, allowlists, snapshots — to match a specific goal.
+
+<CardGroup cols={2}>
+  <Card title="Reward Calculation" icon="calculator" href="/campaigns/reward-calculation">
+    The drip math: how eligible balance, share of the moment, and time held translate into rewards.
+  </Card>
+
+  <Card title="Campaign Modes" icon="sliders" href="/campaigns/campaign-modes">
+    The reward-shaping rules — caps, tiers, fixed APY, and more — that stack on top of a campaign.
+  </Card>
+
+  <Card title="Campaign Lifecycle" icon="clock-rotate-left" href="/campaigns/campaign-lifecycle">
+    Phase-by-phase walkthrough from setup through claim window close.
+  </Card>
+
+  <Card title="Launch a Campaign" icon="rocket" href="/campaigns/launch-a-campaign">
+    What it looks like to bring a campaign live with the Boost team today.
+  </Card>
+</CardGroup>

@@ -1,0 +1,121 @@
+---
+title: "Errors"
+description: "The API error envelope, the SDK error classes, and how to handle each one"
+---
+
+Every endpoint returns errors in one shape, and the [SDK](/developers/sdk) maps each status onto a typed class you can branch on.
+
+## The Error Envelope
+
+Non-2xx responses always return this object:
+
+```json
+{
+  "error": "Validation failed",
+  "code": "INVALID_PARAMS",
+  "details": {
+    "campaignId": ["Invalid campaign ID format. Expected <chainId>:<campaignIndex>"]
+  }
+}
+```
+
+`error` is a human-readable message, `code` is the stable machine-readable identifier to branch on, and `details` carries field-level messages on validation failures and is `null` otherwise.
+
+## API Error Codes
+
+| Status | `code` | What it means | What to do |
+| --- | --- | --- | --- |
+| 400 | `INVALID_PARAMS` | A path, query, or body parameter failed validation | Read `details`; it names the offending field. Check the [API reference](/api-reference/introduction) |
+| 404 | `NOT_FOUND` | The campaign or claim proof does not exist | From `claims.get`, **this is a normal state**. See below |
+| 429 | `RATE_LIMITED` | Per-IP rate limit exceeded | Back off. The SDK already retries with exponential backoff |
+| 500 | `INTERNAL_ERROR` | Server-side failure | Retry with backoff; if it persists, tell us |
+
+<Warning>
+  A 404 from `GET /v1/claims/{campaignId}/{address}` has **three** causes, and two of them are ordinary: the address has no position in that campaign, or no published merkle root covers its rewards yet. Neither is a failure. Catch it and render an accruing state rather than an error.
+
+  The third is different: the endpoint also 404s once the **claim window has closed**, even for a user who has a published, unclaimed leaf. Rendering "rewards accruing" there is wrong and permanent. Check `campaign.endTime` plus the claim window before choosing the copy.
+</Warning>
+
+```ts
+import { TbiNotFoundError } from "@boostxyz/tbi-sdk";
+
+let proof = null;
+try {
+  proof = await tbi.claims.get(id, userAddress);
+} catch (e) {
+  if (!(e instanceof TbiNotFoundError)) throw e;
+  // No position, no root published yet, or the claim window has closed.
+}
+```
+
+If you are checking many campaigns at once, `claims.statuses` avoids the problem entirely: campaigns without a published root report `claimable: 0n` instead of erroring.
+
+## SDK Error Classes
+
+All SDK errors extend `TbiError` and carry a `code`.
+
+| Class | Raised when | Extends |
+| --- | --- | --- |
+| `TbiError` | Base class, never thrown directly | `Error` |
+| `TbiApiError` | Any non-2xx API response not covered below | `TbiError` |
+| `TbiNotFoundError` | HTTP 404, campaign or claim proof not found | `TbiApiError` |
+| `TbiValidationError` | HTTP 400, the API rejected a parameter | `TbiApiError` |
+| `TbiNetworkError` | `fetch` failed or the response body would not parse as JSON | `TbiError` |
+| `TbiClaimError` | SDK-side claim validation: wrong wallet chain, proof/campaign mismatch, nothing claimable, or a batch spanning multiple reward chains | `TbiError` |
+
+Branch on the class, not the message:
+
+```ts
+import {
+  TbiClaimError,
+  TbiNetworkError,
+  TbiNotFoundError,
+  TbiValidationError,
+} from "@boostxyz/tbi-sdk";
+
+try {
+  await tbi.claim({ walletClient, id, address });
+} catch (e) {
+  if (e instanceof TbiNotFoundError) return showAccruing();
+  if (e instanceof TbiClaimError) return showNothingToClaim(e.message);
+  if (e instanceof TbiValidationError) return reportBug(e);
+  if (e instanceof TbiNetworkError) return showRetry();
+  throw e;
+}
+```
+
+<Note>
+  Wallet write failures are **not** wrapped. A user rejecting the transaction, an out-of-gas error, or a contract revert propagates straight from your wallet client, so you can surface the wallet's own message. See [Contracts](/developers/contracts) for the revert selectors.
+</Note>
+
+## What Retries Automatically
+
+The SDK retries network errors, HTTP 429, and HTTP 5xx with exponential backoff of `baseDelayMs * 2^(attempt - 1)`, defaulting to 3 total attempts and a 200 ms base. Other 4xx responses and aborted requests are never retried, because retrying them cannot succeed.
+
+```ts
+const tbi = createTbiClient({ retry: { attempts: 5, baseDelayMs: 500 } });
+```
+
+Pass an `AbortSignal` on any read method to cancel in-flight requests. A cancelled request is never retried:
+
+```ts
+const controller = new AbortController();
+const campaign = await tbi.campaigns.get(id, { signal: controller.signal });
+```
+
+## Contract Reverts
+
+Once a claim transaction is submitted, failures come from the TBI Manager contract rather than the API.
+
+[📜Revert selectors`InvalidProof`, `NothingToClaim`, `ClaimExpired`, and the rest, with the cause of each.](/developers/contracts)
+
+## Keep Exploring
+
+<CardGroup cols={2}>
+  <Card title="Data Conventions" href="/developers/concepts/data-conventions">
+    Wire formats, pagination, caching, and rate limits.
+  </Card>
+  <Card title="Claim Rewards" href="/developers/guides/claim-rewards">
+    The claim flow end to end, including simulating before you sign.
+  </Card>
+</CardGroup>

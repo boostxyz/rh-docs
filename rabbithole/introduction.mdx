@@ -1,0 +1,56 @@
+---
+title: "What Is Rabbithole"
+description: "Get paid to watch your money grow: deposit into supported protocols, hold, and earn rewards every second"
+---
+
+[Rabbithole](https://app.rabbithole.gg) is an app where you earn rewards for keeping money deposited in onchain protocols. Pick a campaign, deposit into the vault, pool, or market it rewards, and your rewards start accruing immediately. Hold longer and hold more, and you earn more.
+
+Your deposit stays in the underlying protocol the whole time. Rabbithole never holds it. The reward budget sits in a separate campaign contract and pays out when you claim.
+
+## What You Can Do
+
+<CardGroup cols={2}>
+  <Card title="Hold to Earn" icon="coins" href="/rabbithole/hold-to-earn">
+    Browse live campaigns, deposit, watch rewards tick up, and claim.
+  </Card>
+  <Card title="Climb the leaderboard" icon="trophy" href="/rabbithole/tiers-and-leaderboard">
+    Earnings rank you against everyone else and set your tier, from Bronze to Diamond.
+  </Card>
+  <Card title="Enter the monthly raffle" icon="ticket" href="/rabbithole/raffle">
+    Your tier earns raffle entries every week. One draw a month, funded by protocol fees.
+  </Card>
+  <Card title="Refer friends" icon="user-plus" href="/rabbithole/referrals">
+    Share a campaign with your invite link and earn a share of what the people you refer earn.
+  </Card>
+</CardGroup>
+
+## How Earning Works in One Minute
+
+Every campaign has a fixed reward budget that drips out continuously over a fixed schedule. At any moment the drip is split among everyone holding an eligible position, in proportion to how much they hold.
+
+- **Bigger deposits earn more.** Your share of the drip is your balance divided by everyone's balance.
+- **Longer holds earn more.** Rewards accrue every second the position is open.
+- **Leaving costs nothing you already earned.** Withdraw and accrual stops, but everything earned so far stays claimable.
+- **Claim whenever you like.** Claims are cumulative. Claiming once at the end pays the same total as claiming every week.
+
+The full model, including how campaign rules like caps and tiers change what counts, is in [How Campaigns Work](/campaigns/how-it-works).
+
+## Where Your Money Sits
+
+| Pot | Where it lives | Who controls it |
+| --- | --- | --- |
+| Your deposit | The underlying protocol (a vault, a pool, a market) | You. Withdraw the same way you would without Rabbithole. |
+| The reward budget | The campaign's own contract | The campaign creator funded it. It pays you when you claim. |
+
+The two never mix. Rabbithole routes your deposit into the protocol and reads your position from the chain, but it does not custody either pot.
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Getting Started" icon="play" href="/rabbithole/getting-started">
+    Sign in, link a wallet, and make your first deposit.
+  </Card>
+  <Card title="FAQ" icon="circle-question" href="/rabbithole/faq">
+    Gas, claim timing, APY, and the other questions people ask first.
+  </Card>
+</CardGroup>
