@@ -1,0 +1,180 @@
+export const RetentionChart = () => {
+  const DAYS = 90;
+  const END = 60;
+  const PLAY_MS = 2600;
+  const W = 1000;
+  const H = 420;
+  const PAD_X = 8;
+  const PAD_TOP = 24;
+  const PAD_BOTTOM = 30;
+  const INNER_W = W - PAD_X * 2;
+  const INNER_H = H - PAD_TOP - PAD_BOTTOM;
+  const MAX = 26000000;
+  const qualified = [
+    { day: 0, usd: 8000000 },
+    { day: 15, usd: 14000000 },
+    { day: 30, usd: 19000000 },
+    { day: 45, usd: 22000000 },
+    { day: 60, usd: 24000000 },
+    { day: 75, usd: 22000000 },
+    { day: 90, usd: 21000000 },
+  ];
+  const unqualified = [
+    { day: 0, usd: 8000000 },
+    { day: 15, usd: 14000000 },
+    { day: 30, usd: 20000000 },
+    { day: 45, usd: 23000000 },
+    { day: 60, usd: 26000000 },
+    { day: 75, usd: 11000000 },
+    { day: 90, usd: 6000000 },
+  ];
+  const px = (day) => PAD_X + day / DAYS * INNER_W;
+  const py = (usd) => {
+    const frac = 1 - usd / MAX;
+    return PAD_TOP + frac * INNER_H;
+  };
+  const linePath = (pts) => pts.map((p, i) => {
+    const cmd = i === 0 ? "M" : "L";
+    return cmd + " " + px(p.day) + " " + py(p.usd);
+  }).join(" ");
+  const areaPath = (pts) => {
+    const last = pts[pts.length - 1];
+    const first = pts[0];
+    const floor = H - PAD_BOTTOM;
+    return linePath(pts) + " L " + px(last.day) + " " + floor + " L " + px(first.day) + " " + floor + " Z";
+  };
+  const valueAt = (pts, day) => {
+    let prev = pts[0];
+    for (const p of pts) {
+      if (p.day >= day) {
+        const span = p.day - prev.day;
+        if (span === 0) return p.usd;
+        const dv = p.usd - prev.usd;
+        const dd = day - prev.day;
+        return prev.usd + dv * dd / span;
+      }
+      prev = p;
+    }
+    return pts[pts.length - 1].usd;
+  };
+  const money = (usd) => {
+    const m = usd / 1000000;
+    return "$" + m.toFixed(0) + "M";
+  };
+  const pct = (v, total) => {
+    const p = v / total * 100;
+    return p + "%";
+  };
+  const chartRef = useRef(null);
+  const dayRef = useRef(null);
+  const qualRef = useRef(null);
+  const baseRef = useRef(null);
+  const clipRef = useRef(null);
+  const markerRef = useRef(null);
+  const dotRef = useRef(null);
+  useEffect(() => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const el = chartRef.current;
+    if (!el) return;
+    if (typeof IntersectionObserver === "undefined") return;
+    const apply = (day) => {
+      const qual = valueAt(qualified, day);
+      const base = valueAt(unqualified, day);
+      if (clipRef.current) clipRef.current.setAttribute("width", String(px(day) + 2));
+      if (dayRef.current) dayRef.current.textContent = String(Math.round(day)).padStart(2, "0");
+      if (qualRef.current) qualRef.current.textContent = money(qual);
+      if (baseRef.current) baseRef.current.textContent = money(base);
+      if (markerRef.current) markerRef.current.setAttribute("opacity", day >= END ? "1" : "0.35");
+      if (dotRef.current) {
+        dotRef.current.style.left = pct(px(day), W);
+        dotRef.current.style.top = pct(py(qual), H);
+      }
+    };
+    apply(0);
+    let frame = 0;
+    let started = 0;
+    const easeOut = (t) => 1 - Math.pow(1 - t, 3);
+    const tick = (now) => {
+      if (!started) started = now;
+      const elapsed = now - started;
+      const t = Math.min(1, elapsed / PLAY_MS);
+      apply(easeOut(t) * DAYS);
+      if (t < 1) frame = requestAnimationFrame(tick);
+    };
+    const observer = new IntersectionObserver((entries) => {
+      if (!entries[0].isIntersecting) return;
+      observer.disconnect();
+      frame = requestAnimationFrame(tick);
+    }, { threshold: 0.4 });
+    observer.observe(el);
+    return () => {
+      observer.disconnect();
+      if (frame) cancelAnimationFrame(frame);
+    };
+  }, []);
+  const finalQual = valueAt(qualified, DAYS);
+  const finalBase = valueAt(unqualified, DAYS);
+  const dotLeft = pct(px(DAYS), W);
+  const dotTop = pct(py(finalQual), H);
+  const markerLeft = pct(px(END), W);
+  const endX = px(END);
+  const viewBox = "0 0 " + W + " " + H;
+  const grid = [0.25, 0.5, 0.75];
+  const summary = "Two cohorts over 90 days. Qualified capital rises to 24 million dollars by day 60 and holds near 21 million by day 90. Unqualified capital rises to 26 million by day 60 and falls to 6 million by day 90. Illustrative model, not observed performance.";
+  return <div className="rh-anim not-prose">
+    <dl className="rh-hud">
+      <div>
+        <dt className="rh-label">Day</dt>
+        <dd className="rh-value"><span ref={dayRef}>{DAYS}</span><span style={{ color: "var(--rh-text-3)" }}>/{DAYS}</span></dd>
+      </div>
+      <div>
+        <dt className="rh-label rh-label--positive">Qualified</dt>
+        <dd className="rh-value rh-value--positive"><span ref={qualRef}>{money(finalQual)}</span></dd>
+      </div>
+      <div>
+        <dt className="rh-label rh-label--muted">Unqualified</dt>
+        <dd className="rh-value rh-value--muted"><span ref={baseRef}>{money(finalBase)}</span></dd>
+      </div>
+    </dl>
+    <div ref={chartRef} className="rh-chart">
+      <svg viewBox={viewBox} preserveAspectRatio="none" role="img" aria-label={summary}>
+        <defs>
+          <linearGradient id="rh-qual-fill" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="var(--rh-accent)" stopOpacity="0.22" />
+            <stop offset="100%" stopColor="var(--rh-accent)" stopOpacity="0" />
+          </linearGradient>
+          <clipPath id="rh-time-clip">
+            <rect ref={clipRef} x="0" y="0" width={W} height={H} />
+          </clipPath>
+        </defs>
+        {grid.map((f) => <line key={f} x1={PAD_X} x2={W - PAD_X} y1={PAD_TOP + f * INNER_H} y2={PAD_TOP + f * INNER_H} stroke="var(--rh-grid)" strokeWidth="1" vectorEffect="non-scaling-stroke" />)}
+        <g ref={markerRef} opacity="1">
+          <line x1={endX} x2={endX} y1={PAD_TOP - 8} y2={H - PAD_BOTTOM} stroke="var(--rh-muted-stroke)" strokeWidth="1" strokeDasharray="4 4" vectorEffect="non-scaling-stroke" />
+        </g>
+        <g clipPath="url(#rh-time-clip)">
+          <path d={areaPath(qualified)} fill="url(#rh-qual-fill)" />
+          <path d={linePath(unqualified)} fill="none" stroke="var(--rh-muted-stroke)" strokeWidth="1.5" strokeDasharray="5 5" vectorEffect="non-scaling-stroke" />
+          <path d={linePath(qualified)} fill="none" stroke="var(--rh-accent)" strokeWidth="2.5" vectorEffect="non-scaling-stroke" />
+        </g>
+      </svg>
+      <div ref={dotRef} aria-hidden className="rh-chart__dot" style={{ left: dotLeft, top: dotTop }} />
+      <span aria-hidden className="rh-label rh-chart__marker" style={{ left: markerLeft }}>Incentives end</span>
+    </div>
+    <div className="rh-legend">
+      <div className="rh-legend__item">
+        <span aria-hidden className="rh-legend__swatch" />
+        <div>
+          <p className="rh-legend__title">Qualified capital</p>
+          <p className="rh-body rh-legend__text">Targeted deposits. They rise with the campaign and hold after incentives end.</p>
+        </div>
+      </div>
+      <div className="rh-legend__item">
+        <span aria-hidden className="rh-legend__swatch rh-legend__swatch--dashed" />
+        <div>
+          <p className="rh-legend__title">Unqualified capital</p>
+          <p className="rh-body rh-legend__text">Farms the reward, then leaves the moment incentives stop.</p>
+        </div>
+      </div>
+    </div>
+  </div>;
+};

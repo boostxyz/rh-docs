@@ -55,6 +55,7 @@
             "group": "Overview",
             "pages": [
               "campaigns/introduction",
+              "campaigns/why-rabbithole",
               "campaigns/how-it-works"
             ]
           },

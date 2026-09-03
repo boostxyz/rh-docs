@@ -1,0 +1,78 @@
+export const RewardModes = () => {
+  const W = 148;
+  const H = 56;
+  const STROKE = "var(--rh-accent)";
+  const MUTED = "var(--rh-muted-stroke)";
+  const y8 = H - 8;
+  const y14 = H - 14;
+  const y20 = H - 20;
+  const y28 = H - 28;
+  const y34 = H - 34;
+  const y42 = H - 42;
+  const axisY = H - 6;
+  const cliffX = W * 0.55;
+  const msA = W * 0.33;
+  const msB = W * 0.66;
+  const modes = [
+    { id: "time-weighted", name: "Time-weighted", mechanic: "Accrual scales with time in position.", detail: "Longer in the pool, longer it earns." },
+    { id: "cliffs", name: "Cliffs", mechanic: "Nothing vests until the cliff day.", detail: "Zero through the lock, then everything at once." },
+    { id: "milestones", name: "Milestones", mechanic: "Bonuses unlock at named days.", detail: "Step bonuses at day 30 and day 60." },
+    { id: "net-new", name: "New capital", mechanic: "Rotated capital does not qualify.", detail: "Only balance new to the position accrues." },
+    { id: "caps", name: "Caps", mechanic: "Ceilings per wallet and for the whole campaign.", detail: "No single depositor can take the budget." },
+  ];
+  const paths = {
+    "time-weighted": "M0 " + y8 + " C " + W * 0.4 + " " + y14 + ", " + W * 0.6 + " 22, " + W + " 8",
+    cliffs: "M0 " + y8 + " L " + cliffX + " " + y8 + " L " + cliffX + " 12 L " + W + " 12",
+    milestones: "M0 " + y8 + " L " + msA + " " + y20 + " L " + msA + " " + y28 + " L " + msB + " " + y34 + " L " + msB + " " + y42 + " L " + W + " 10",
+    caps: "M0 " + y8 + " C " + W * 0.3 + " " + y20 + ", " + W * 0.4 + " 14, " + W * 0.62 + " 14 L " + W + " 14",
+  };
+  const [active, setActive] = useState(0);
+  const [drawn, setDrawn] = useState(false);
+  useEffect(() => {
+    setDrawn(false);
+    const raf = requestAnimationFrame(() => requestAnimationFrame(() => setDrawn(true)));
+    const failsafe = window.setTimeout(() => setDrawn(true), 400);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.clearTimeout(failsafe);
+    };
+  }, [active]);
+  const shape = (id) => {
+    if (id === "net-new") {
+      return <g><rect className="gd-mark gd-pulse" x={18} y={16} width={38} height={H - 24} fill={STROKE} rx={2} /><rect className="gd-mark" x={80} y={16} width={38} height={H - 24} fill="none" stroke={MUTED} strokeWidth={1.5} strokeDasharray="3 3" rx={2} /></g>;
+    }
+    if (id === "cliffs") {
+      return <g><line className="gd-line" pathLength={1} x1={cliffX} y1={4} x2={cliffX} y2={axisY} stroke={MUTED} strokeWidth={1} strokeDasharray="3 3" /><path className="gd-line" pathLength={1} d={paths.cliffs} fill="none" stroke={STROKE} strokeWidth={2} /></g>;
+    }
+    if (id === "milestones") {
+      return <g><path className="gd-line" pathLength={1} d={paths.milestones} fill="none" stroke={STROKE} strokeWidth={2} /><circle className="gd-mark" cx={msA} cy={y28} r={3} fill={STROKE} /><circle className="gd-mark" cx={msB} cy={y42} r={3} fill={STROKE} /></g>;
+    }
+    if (id === "caps") {
+      return <g><line className="gd-line" pathLength={1} x1={0} y1={14} x2={W} y2={14} stroke={MUTED} strokeWidth={1} strokeDasharray="3 3" /><path className="gd-line" pathLength={1} d={paths.caps} fill="none" stroke={STROKE} strokeWidth={2} /></g>;
+    }
+    return <path className="gd-line" pathLength={1} d={paths["time-weighted"]} fill="none" stroke={STROKE} strokeWidth={2} />;
+  };
+  const viewBox = "0 0 " + W + " " + H;
+  return <div className="rh-anim not-prose">
+    <div className="rh-modes">
+      {modes.map((mode, index) => {
+        const open = index === active;
+        const panelId = "rh-mode-" + mode.id;
+        const label = "Accrual shape for " + mode.name + ": " + mode.mechanic;
+        return <button key={mode.id} type="button" onClick={() => setActive(index)} aria-expanded={open} aria-controls={panelId} className="rh-mode" style={{ flexGrow: open ? 1.6 : 1 }}>
+          <span className="rh-mode__name">{mode.name}</span>
+          <span className="rh-mode__mechanic">{mode.mechanic}</span>
+          <div id={panelId} aria-hidden={!open} className="rh-mode__panel">
+            <div>
+              <div className="rh-mode__inner">
+                {open ? <svg viewBox={viewBox} data-draw={drawn ? "on" : "off"} className="rh-mode__diagram" role="img" aria-label={label}><line x1={0} y1={axisY} x2={W} y2={axisY} stroke={MUTED} strokeWidth={1} />{shape(mode.id)}</svg> : null}
+                <span className="rh-mode__detail">{mode.detail}</span>
+              </div>
+            </div>
+          </div>
+        </button>;
+      })}
+    </div>
+    <p className="rh-modes-note">Got a mechanic that is not here? We build it.</p>
+  </div>;
+};
