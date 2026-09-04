@@ -1,0 +1,172 @@
+---
+title: "Opportunities List"
+description: "A table of live campaigns with reward APR, TVL, and time remaining, for your own pools or every campaign on a chain"
+---
+
+The list Rabbithole shows on its Hold to Earn page, rendered inside your product. One request, no wallet, no key. It is the highest-value thing you can ship from these docs, and the smallest.
+
+This page assumes the client and helpers from [Project Setup](/developers/examples/setup).
+
+## What It Shows
+
+| Column | Field | Notes |
+| --- | --- | --- |
+| Campaign | `target` | Campaigns have no name. Label rows from the target, or from your own pool metadata |
+| Reward APR | `boostApyBps` | The number to display. `null` before start, after end, and at zero TVL |
+| Protocol APR | `protocolApyBps` | What the vault or pool pays on its own. Often `null` |
+| TVL | `tvl` | USD with 6 decimals |
+| Rewards | `rewardToken.symbol` | What participants earn |
+| Ends | `endTime` | Unix seconds as a `bigint` |
+
+## The Component
+
+```tsx title="components/opportunities-list.tsx"
+"use client";
+
+import type { Campaign } from "@boostxyz/tbi-sdk";
+import { useQuery } from "@tanstack/react-query";
+import { campaignKey, campaignLabel, endsIn, formatBps, formatUsd } from "@/lib/format";
+import { tbi } from "@/lib/tbi";
+
+export function useActiveCampaigns(chainId?: number) {
+  return useQuery({
+    queryKey: ["tbi", "campaigns", "active", chainId ?? "all"],
+    queryFn: () => tbi.campaigns.active({ chainId, limit: 100 }),
+    refetchInterval: 60_000,
+  });
+}
+
+export function OpportunitiesList({ chainId }: { chainId?: number }) {
+  const { data, isPending, error } = useActiveCampaigns(chainId);
+
+  if (isPending) return <p>Loading campaigns…</p>;
+  if (error) return <p>Could not load campaigns.</p>;
+  if (data.data.length === 0) return <p>No live campaigns right now.</p>;
+
+  return (
+    <table>
+      <thead>
+        <tr>
+          <th>Campaign</th>
+          <th>Reward APR</th>
+          <th>Protocol APR</th>
+          <th>TVL</th>
+          <th>Rewards</th>
+          <th>Ends</th>
+        </tr>
+      </thead>
+      <tbody>
+        {data.data.map((campaign) => (
+          <OpportunityRow key={campaignKey(campaign.id)} campaign={campaign} />
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
+function OpportunityRow({ campaign }: { campaign: Campaign }) {
+  return (
+    <tr>
+      <td>{campaignLabel(campaign)}</td>
+      <td>{formatBps(campaign.boostApyBps) ?? "—"}</td>
+      <td>{formatBps(campaign.protocolApyBps) ?? "—"}</td>
+      <td>{formatUsd(campaign.tvl)}</td>
+      <td>{campaign.rewardToken.symbol}</td>
+      <td>{endsIn(campaign.endTime)}</td>
+    </tr>
+  );
+}
+```
+
+Drop it on a page:
+
+```tsx
+<OpportunitiesList chainId={8453} />
+```
+
+<Warning>
+  `chainId` filters by the **reward** chain, the one users claim on. A campaign that tracks a pool on Arbitrum and pays on Base shows up under `8453`, not `42161`. To list campaigns for a specific pool, filter by target instead (next section).
+</Warning>
+
+## Only Your Own Pools
+
+Most partners want the campaigns rewarding their vaults, not every campaign on a chain. Match on the target, which is the position contract on the **event** chain:
+
+```tsx
+export function useVaultCampaigns(chainId: number, address: `0x${string}`) {
+  return useQuery({
+    queryKey: ["tbi", "campaigns", "active", "target", chainId, address],
+    queryFn: () => tbi.campaigns.active({ target: { chainId, address } }),
+    refetchInterval: 60_000,
+  });
+}
+```
+
+Then render one row per vault, or a single "Earn 15.50% extra" badge when the list is non-empty. For a Uniswap v4 pool, match on `target.poolId` client-side; see [Find Your Campaign](/developers/guides/display-campaign-stats#find-your-campaign).
+
+## Server Components
+
+The list needs no wallet, so it can render on the server and ship as HTML. Fetch in a Server Component and format there.
+
+```tsx title="app/opportunities/page.tsx"
+import { campaignKey, campaignLabel, endsIn, formatBps, formatUsd } from "@/lib/format";
+import { tbi } from "@/lib/tbi";
+
+export const revalidate = 60;
+
+export default async function OpportunitiesPage() {
+  const { data } = await tbi.campaigns.active({ limit: 100 });
+
+  const rows = data.map((campaign) => ({
+    key: campaignKey(campaign.id),
+    label: campaignLabel(campaign),
+    rewardApr: formatBps(campaign.boostApyBps) ?? "—",
+    tvl: formatUsd(campaign.tvl),
+    token: campaign.rewardToken.symbol,
+    ends: endsIn(campaign.endTime),
+  }));
+
+  return (
+    <table>
+      <tbody>
+        {rows.map((row) => (
+          <tr key={row.key}>
+            <td>{row.label}</td>
+            <td>{row.rewardApr}</td>
+            <td>{row.tvl}</td>
+            <td>{row.token}</td>
+            <td>{row.ends}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+```
+
+<Warning>
+  `bigint` cannot cross the server-to-client boundary. If you pass campaign data from a Server Component into a Client Component, format it into strings first, as above, or pass the campaign ID and fetch again on the client.
+</Warning>
+
+`revalidate = 60` caches the page for a minute, the same cadence as the client-side `refetchInterval`.
+
+## Rules the Row Has to Follow
+
+- **Never render a null APR as `0.00%`.** A live campaign showing zero reads as broken. Show a dash or hide the cell.
+- **Never sum the two APRs silently.** They measure different things and can each be `null` on their own. Two lines, or one total that is labelled as an estimate.
+- **`participants` is not a live holder count.** A wallet that entered and later withdrew stays counted. Use it for social proof, not for "currently earning".
+- **Forwarder-only campaigns are hidden by default.** If your deposit flow uses the [Deposit Button](/developers/examples/deposit-button), pass `includeForwarderRequired: true` so those campaigns appear.
+
+## Keep Exploring
+
+<CardGroup cols={3}>
+  <Card title="Display Campaign Stats" href="/developers/guides/display-campaign-stats">
+    The endpoint behind this list, field by field.
+  </Card>
+  <Card title="Campaigns, IDs, and Chains" href="/developers/concepts/campaigns">
+    Event chain versus reward chain, and what discovery returns.
+  </Card>
+  <Card title="Rewards Panel" href="/developers/examples/rewards-panel">
+    The next component: what the connected wallet has earned.
+  </Card>
+</CardGroup>

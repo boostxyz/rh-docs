@@ -1,0 +1,193 @@
+---
+title: "Claim Button"
+description: "A claim button that switches chains, simulates, submits, waits for the receipt, and updates the UI without a stale re-read"
+---
+
+Claiming is one contract call, but a good claim button handles five things around it: the proof, the chain switch, a dry run, the receipt, and what to show afterwards. This component does all five in about sixty lines.
+
+This page assumes the client and helpers from [Project Setup](/developers/examples/setup).
+
+## What It Does
+
+1. **Fetches the proof** for the wallet and campaign, treating a 404 as "nothing to claim" rather than an error.
+2. **Switches the wallet** to the reward chain if it is somewhere else.
+3. **Simulates** the claim before asking for a signature, so a revert becomes a readable message instead of a failed transaction.
+4. **Submits and waits** for the receipt.
+5. **Marks the row claimed locally** instead of re-fetching, because the API can trail the chain by a few minutes.
+
+## The Component
+
+```tsx title="components/claim-button.tsx"
+"use client";
+
+import { type CampaignId, type ClaimProof, TbiNotFoundError } from "@boostxyz/tbi-sdk";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useAccount, usePublicClient, useSwitchChain, useWalletClient } from "wagmi";
+import { campaignKey } from "@/lib/format";
+import { tbi } from "@/lib/tbi";
+
+function proofQueryKey(id: CampaignId, address?: `0x${string}`) {
+  return ["tbi", "proof", campaignKey(id), address] as const;
+}
+
+export function useClaimProof(id: CampaignId, address?: `0x${string}`) {
+  return useQuery({
+    queryKey: proofQueryKey(id, address),
+    queryFn: async (): Promise<ClaimProof | null> => {
+      try {
+        return await tbi.claims.get(id, address!);
+      } catch (error) {
+        // 404 is a normal state: no position, or no published root yet.
+        if (error instanceof TbiNotFoundError) return null;
+        throw error;
+      }
+    },
+    enabled: !!address,
+  });
+}
+
+export function ClaimButton({ id }: { id: CampaignId }) {
+  const { address, chainId: walletChainId } = useAccount();
+  const { data: walletClient } = useWalletClient({ chainId: id.chainId });
+  const publicClient = usePublicClient({ chainId: id.chainId });
+  const { switchChain, chains, isPending: switching } = useSwitchChain();
+  const queryClient = useQueryClient();
+  const { data: proof } = useClaimProof(id, address);
+
+  const claim = useMutation({
+    mutationFn: async () => {
+      if (!walletClient || !publicClient || !address || !proof) {
+        throw new Error("Wallet not ready");
+      }
+      const simulation = await tbi.claim.simulate({ walletClient, id, address, proof });
+      if (!simulation.willSucceed) {
+        throw new Error(simulation.revertReason ?? "Claim would revert");
+      }
+      const { hash } = await tbi.claim({ walletClient, id, address, proof });
+      await publicClient.waitForTransactionReceipt({ hash });
+      return hash;
+    },
+    onSuccess: () => {
+      // Do not refetch the proof here. The API can still report the amount
+      // as claimable for a few minutes, and a second click would revert.
+      queryClient.setQueryData<ClaimProof | null>(proofQueryKey(id, address), (old) =>
+        old ? { ...old, alreadyClaimed: old.cumulativeAmount, claimable: 0n } : old,
+      );
+    },
+  });
+
+  if (!address) return null;
+
+  if (claim.isSuccess) return <span>Claimed</span>;
+
+  if (!proof || proof.claimable === 0n) {
+    return <button disabled>Nothing to claim</button>;
+  }
+
+  if (walletChainId !== id.chainId) {
+    const chainName = chains.find((c) => c.id === id.chainId)?.name ?? `chain ${id.chainId}`;
+    return (
+      <button disabled={switching} onClick={() => switchChain({ chainId: id.chainId })}>
+        Switch to {chainName}
+      </button>
+    );
+  }
+
+  return (
+    <>
+      <button disabled={claim.isPending || !walletClient} onClick={() => claim.mutate()}>
+        {claim.isPending ? "Claiming…" : "Claim"}
+      </button>
+      {claim.error ? <p role="alert">{claim.error.message}</p> : null}
+    </>
+  );
+}
+```
+
+Use it anywhere you have a campaign ID:
+
+```tsx
+<ClaimButton id={{ chainId: 8453, campaignIndex: 56 }} />
+```
+
+## Where the Amount Comes From
+
+The button reads `claimable` from the proof endpoint, not from the rewards list that renders the row around it. Only the proof is guaranteed to match what the contract will pay. A button driven by `accumulatedRewards` over-promises and reverts with `InvalidProof()`. See [Show User Rewards](/developers/guides/show-user-rewards#two-numbers-two-endpoints).
+
+## Why Simulate
+
+`tbi.claim.simulate` runs an `eth_call` and needs no signature, so it costs one RPC round trip and no wallet prompt. Every revert the contract can produce has a name, and `revertReason` carries it. The list is in [Contracts](/developers/contracts#revert-selectors).
+
+## After the Claim
+
+<Warning>
+  Do not invalidate the proof query after a successful claim. The API is served from short caches and may still report the full amount as claimable while the contract has already paid it. A second click in that window reverts with `NothingToClaim()`.
+</Warning>
+
+The `onSuccess` handler above writes the settled state into the cache directly. The next natural refresh, a page load or the rewards panel's 60 second interval, picks up the real value once the API has caught up. If you need the authoritative answer immediately, read it from the chain; see [Reading claim state on-chain](/developers/contracts#reading-claim-state-on-chain).
+
+## Claim Everything at Once
+
+A wallet with rewards in several campaigns on the same reward chain can settle all of them in one Multicall3 transaction.
+
+```tsx title="components/claim-all-button.tsx"
+"use client";
+
+import type { ClaimProof } from "@boostxyz/tbi-sdk";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useAccount, usePublicClient, useWalletClient } from "wagmi";
+import { campaignKey } from "@/lib/format";
+import { tbi } from "@/lib/tbi";
+
+export function ClaimAllButton({ chainId }: { chainId: number }) {
+  const { address, chainId: walletChainId } = useAccount();
+  const { data: walletClient } = useWalletClient({ chainId });
+  const publicClient = usePublicClient({ chainId });
+  const queryClient = useQueryClient();
+
+  const claimAll = useMutation({
+    mutationFn: async () => {
+      if (!walletClient || !publicClient || !address) throw new Error("Wallet not ready");
+      const result = await tbi.claimAll({ walletClient, address, chainId });
+      await publicClient.waitForTransactionReceipt({ hash: result.hash });
+      return result;
+    },
+    onSuccess: (result) => {
+      for (const { id } of result.claimed) {
+        queryClient.setQueryData<ClaimProof | null>(
+          ["tbi", "proof", campaignKey(id), address],
+          (old) => (old ? { ...old, alreadyClaimed: old.cumulativeAmount, claimable: 0n } : old),
+        );
+      }
+    },
+  });
+
+  if (!address || walletChainId !== chainId) return null;
+
+  return (
+    <button disabled={claimAll.isPending || !walletClient} onClick={() => claimAll.mutate()}>
+      {claimAll.isPending ? "Claiming…" : "Claim all"}
+    </button>
+  );
+}
+```
+
+`claimAll` finds every campaign with claimable rewards on that chain, drops the empty ones, and submits one transaction. It is **all or nothing**: one failing subcall reverts the batch, and it throws `TbiClaimError` before touching the wallet if nothing is claimable. Render it only when at least one row is claimable, and fall back to per-row buttons if you want partial success. Details in [Claim Several Campaigns at Once](/developers/guides/claim-rewards#claim-several-campaigns-at-once).
+
+## Sponsoring Gas or Skipping viem
+
+The claim pays its `user` argument, not the sender, so your own relayer can submit it. Use `tbi.encodeClaim` to get `{ to, data, value }` and send it from any signer, account-abstraction stack, or Safe. See [Non-viem Stacks](/developers/guides/claim-rewards#non-viem-stacks).
+
+## Keep Exploring
+
+<CardGroup cols={3}>
+  <Card title="Claim Rewards" href="/developers/guides/claim-rewards">
+    The full flow, batching, and gas expectations.
+  </Card>
+  <Card title="Errors" href="/developers/errors">
+    Which errors to catch and which retry themselves.
+  </Card>
+  <Card title="Deposit Button" href="/developers/examples/deposit-button">
+    For campaigns that require a Forwarder deposit.
+  </Card>
+</CardGroup>

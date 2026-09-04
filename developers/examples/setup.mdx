@@ -1,0 +1,183 @@
+---
+title: "Project Setup"
+description: "The Next.js, wagmi, and TanStack Query scaffolding that every example on these pages shares"
+---
+
+The examples in this section are complete React components for a Next.js App Router project using wagmi and viem. They all import the same two files, a shared SDK client and a set of formatting helpers, so set those up once and every example drops in as written.
+
+<Note>
+  Not on Next.js? Nothing here depends on the framework except the `"use client"` directive and the `@/` import alias. The components work in any React app with wagmi and TanStack Query installed.
+</Note>
+
+## Install
+
+<CodeGroup>
+```bash title="npm"
+npm install @boostxyz/tbi-sdk viem wagmi @tanstack/react-query
+```
+
+```bash title="pnpm"
+pnpm add @boostxyz/tbi-sdk viem wagmi @tanstack/react-query
+```
+</CodeGroup>
+
+## The Client
+
+Create the SDK client once at module scope. It is frozen and immutable, so sharing it is safe.
+
+```ts title="lib/tbi.ts"
+import { createTbiClient } from "@boostxyz/tbi-sdk";
+
+export const tbi = createTbiClient({
+  // Leave unset in production. Point at staging while you build.
+  baseUrl: process.env.NEXT_PUBLIC_TBI_API_URL,
+  // Attribution only. Not a secret, not authentication.
+  refId: process.env.NEXT_PUBLIC_BOOST_REF_ID,
+});
+```
+
+| Variable | Production | Staging |
+| --- | --- | --- |
+| `NEXT_PUBLIC_TBI_API_URL` | Unset. The SDK defaults to `https://api-tbi.boost.xyz` | `https://api-tbi-staging.boost.xyz` |
+| `NEXT_PUBLIC_BOOST_REF_ID` | The `refId` the team assigned you | The same value |
+
+### Building Against Staging
+
+Staging runs the same API and SDK surface against test campaigns. Those campaigns track real positions on mainnet chains but pay rewards on **Base Sepolia** (chain `84532`), so you can deposit into your actual vault and claim test tokens without spending real rewards.
+
+Ask the team in your partner channel or on [Discord](https://discord.gg/JTCqaekdm) for the ID of the staging campaign to build against. There is no self-serve way to create one.
+
+## Providers
+
+Wrap your app in wagmi and TanStack Query. Include every chain your campaigns pay on, plus Base Sepolia while you are on staging. The wallet has to be on the **reward chain** to claim and on the **event chain** to deposit, so both need to be in the config.
+
+```tsx title="app/providers.tsx"
+"use client";
+
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { useState } from "react";
+import { WagmiProvider, createConfig, http } from "wagmi";
+import { base, baseSepolia } from "wagmi/chains";
+import { injected } from "wagmi/connectors";
+
+export const wagmiConfig = createConfig({
+  chains: [base, baseSepolia],
+  connectors: [injected()],
+  transports: {
+    [base.id]: http(),
+    [baseSepolia.id]: http(),
+  },
+});
+
+export function Providers({ children }: { children: React.ReactNode }) {
+  const [queryClient] = useState(
+    () => new QueryClient({ defaultOptions: { queries: { staleTime: 60_000 } } }),
+  );
+
+  return (
+    <WagmiProvider config={wagmiConfig}>
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    </WagmiProvider>
+  );
+}
+```
+
+```tsx title="app/layout.tsx"
+import { Providers } from "./providers";
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="en">
+      <body>
+        <Providers>{children}</Providers>
+      </body>
+    </html>
+  );
+}
+```
+
+The 60 second `staleTime` matches how often campaign stats actually change. Polling faster only spends your rate limit. See [Caching and Polling](/developers/concepts/data-conventions#caching-and-polling).
+
+## Formatting Helpers
+
+Every amount the SDK returns is a `bigint` in base units, APRs are basis points, and campaigns carry no display name. These helpers turn all of that into strings for the UI.
+
+```ts title="lib/format.ts"
+import type { Campaign, CampaignId } from "@boostxyz/tbi-sdk";
+import { formatUnits } from "viem";
+
+/** "8453:56". A stable key for React lists and query keys. */
+export function campaignKey(id: CampaignId) {
+  return `${id.chainId}:${id.campaignIndex}`;
+}
+
+/** 1550n → "15.50%". Returns null for null so the caller can hide the line. */
+export function formatBps(bps: bigint | null) {
+  if (bps === null) return null;
+  return `${(Number(bps) / 100).toFixed(2)}%`;
+}
+
+/** TVL is USD with 6 decimals: 7608022n → "$7.61". */
+export function formatUsd(tvl: bigint) {
+  return Number(formatUnits(tvl, 6)).toLocaleString("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 2,
+  });
+}
+
+/**
+ * Reward amounts. Significant digits below 1 so a position opened an hour ago
+ * shows "0.00003 USDC" instead of "0.0000 USDC".
+ */
+export function formatToken(raw: bigint, decimals: number, symbol: string) {
+  const n = Number(formatUnits(raw, decimals));
+  const text =
+    n !== 0 && Math.abs(n) < 1
+      ? n.toLocaleString("en-US", { maximumSignificantDigits: 4 })
+      : n.toLocaleString("en-US", { maximumFractionDigits: 4 });
+  return `${text} ${symbol}`;
+}
+
+/** Campaigns have no display name. Label them from the target they reward. */
+export function campaignLabel(campaign: Campaign) {
+  const { target } = campaign;
+  if (target.symbol) return target.symbol;
+  if (target.protocol) return target.protocol;
+  return `${target.address.slice(0, 6)}…${target.address.slice(-4)}`;
+}
+
+/** "12d left", "5h left", or "Ended". */
+export function endsIn(endTime: bigint) {
+  const ms = Number(endTime) * 1000 - Date.now();
+  if (ms <= 0) return "Ended";
+  const days = Math.floor(ms / 86_400_000);
+  if (days > 0) return `${days}d left`;
+  return `${Math.floor(ms / 3_600_000)}h left`;
+}
+```
+
+<Tip>
+  You know your own pools better than the API does. Most integrations replace `campaignLabel` with a lookup from `campaign.target.address` to their own pool name and icon.
+</Tip>
+
+## Persisting the Query Cache
+
+TanStack Query's in-memory cache handles `bigint` fine. If you persist the cache to `localStorage` or IndexedDB, `JSON.stringify` throws on the first response. The serializer pair is in [Data Conventions](/developers/concepts/data-conventions#every-amount-is-a-bigint).
+
+## The Examples
+
+<CardGroup cols={2}>
+  <Card title="Opportunities List" icon="table-list" href="/developers/examples/opportunities-list">
+    Live campaigns with reward APR, TVL, and time remaining.
+  </Card>
+  <Card title="Rewards Panel" icon="coins" href="/developers/examples/rewards-panel">
+    What the connected wallet has earned and can claim.
+  </Card>
+  <Card title="Claim Button" icon="hand-holding-dollar" href="/developers/examples/claim-button">
+    Switch chain, simulate, submit, and update the UI.
+  </Card>
+  <Card title="Deposit Button" icon="arrow-down-to-bracket" href="/developers/examples/deposit-button">
+    Route a deposit through the Forwarder when a campaign requires it.
+  </Card>
+</CardGroup>
