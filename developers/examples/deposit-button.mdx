@@ -1,0 +1,171 @@
+---
+title: "Deposit Button"
+description: "A deposit form that routes through the Boost Forwarder, so the position activates in a campaign that requires it"
+---
+
+Most campaigns reward any position in the target, and users deposit through your protocol exactly as they always have. Some campaigns only reward positions that entered through the **Boost Forwarder**. For those, your deposit flow has to route through it, and this component does.
+
+This page assumes the client and helpers from [Project Setup](/developers/examples/setup). The product reasoning is in [Earning Activation](/campaigns/earning-activation).
+
+## When to Render It
+
+Check `requiresForwarderDeposit` on the campaign. When it is `false`, render nothing from this page and let users deposit as usual. When it is `true`, this button is the only way a new position starts earning.
+
+<Note>
+  Activation is a one-time event. Once a user's first deposit routes through the Forwarder, every later deposit, withdrawal, and transfer counts normally. They never have to use the Forwarder again.
+</Note>
+
+Remember that discovery hides these campaigns unless you ask for them:
+
+```ts
+tbi.campaigns.active({ target, includeForwarderRequired: true });
+```
+
+## The Component
+
+```tsx title="components/deposit-button.tsx"
+"use client";
+
+import type { Campaign } from "@boostxyz/tbi-sdk";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { parseUnits } from "viem";
+import { useAccount, usePublicClient, useSwitchChain, useWalletClient } from "wagmi";
+import { tbi } from "@/lib/tbi";
+
+/** Is this campaign's target registered with the Forwarder? */
+export function useForwarderTarget(campaign: Campaign) {
+  return useQuery({
+    queryKey: ["tbi", "forwarder", "targets"],
+    queryFn: () => tbi.forwarder.targets(),
+    staleTime: Infinity,
+    select: (targets) =>
+      targets.find(
+        (t) =>
+          t.chainId === campaign.target.chainId &&
+          t.targetAddress === campaign.target.address,
+      ) ?? null,
+  });
+}
+
+export function DepositButton({ campaign }: { campaign: Campaign }) {
+  // Deposits happen on the EVENT chain, where the position lives.
+  const eventChainId = campaign.target.chainId;
+  const { address, chainId: walletChainId } = useAccount();
+  const { data: walletClient } = useWalletClient({ chainId: eventChainId });
+  const publicClient = usePublicClient({ chainId: eventChainId });
+  const { switchChain, isPending: switching } = useSwitchChain();
+  const { data: target, isPending: loadingTarget } = useForwarderTarget(campaign);
+  const [amount, setAmount] = useState("");
+
+  const deposit = useMutation({
+    mutationFn: async () => {
+      if (!walletClient || !publicClient || !address || !target) {
+        throw new Error("Wallet not ready");
+      }
+      const built = await tbi.forwarder.buildDeposit({
+        target: campaign.target,
+        amount: parseUnits(amount, target.acceptedToken.decimals),
+        sender: address,
+      });
+
+      // One or two transactions: an approval only if the allowance is short,
+      // then the deposit. Each must confirm before the next is sent.
+      let hash: `0x${string}` | undefined;
+      for (const tx of built.transactions) {
+        hash = await walletClient.sendTransaction({
+          account: address,
+          chain: walletClient.chain,
+          to: tx.to,
+          data: tx.data,
+          value: tx.value,
+        });
+        await publicClient.waitForTransactionReceipt({ hash });
+      }
+      return hash;
+    },
+  });
+
+  if (!campaign.requiresForwarderDeposit) return null;
+  if (loadingTarget) return <p>Checking deposit route…</p>;
+  if (!target) return <p>Direct deposits are not available for this vault.</p>;
+  if (!address) return <p>Connect a wallet to deposit.</p>;
+
+  if (walletChainId !== eventChainId) {
+    return (
+      <button disabled={switching} onClick={() => switchChain({ chainId: eventChainId })}>
+        Switch network to deposit
+      </button>
+    );
+  }
+
+  if (deposit.isSuccess) {
+    return <p>Deposited. This position now counts toward the campaign.</p>;
+  }
+
+  return (
+    <form
+      onSubmit={(event) => {
+        event.preventDefault();
+        deposit.mutate();
+      }}
+    >
+      <input
+        inputMode="decimal"
+        placeholder={`Amount in ${target.acceptedToken.symbol}`}
+        value={amount}
+        onChange={(event) => setAmount(event.target.value)}
+      />
+      <button type="submit" disabled={deposit.isPending || amount === "" || !walletClient}>
+        {deposit.isPending ? "Depositing…" : `Deposit ${target.acceptedToken.symbol}`}
+      </button>
+      {deposit.error ? <p role="alert">{deposit.error.message}</p> : null}
+    </form>
+  );
+}
+```
+
+Use it with a campaign object from discovery:
+
+```tsx
+<DepositButton campaign={campaign} />
+```
+
+## Event Chain, Not Reward Chain
+
+The [Claim Button](/developers/examples/claim-button) needs the wallet on the reward chain. This one needs it on the **event chain**, `campaign.target.chainId`, because that is where the vault is. For same-chain campaigns they are identical. For cross-chain campaigns a user can end up switching networks between depositing and claiming, which is expected.
+
+## Multi-Asset Targets
+
+A few targets accept more than one asset. `target.acceptedTokens` lists them, and `acceptedToken` is the default. To let users pick, add a select over `acceptedTokens` and pass the choice as `inputToken`:
+
+```ts
+const built = await tbi.forwarder.buildDeposit({
+  target: campaign.target,
+  amount,
+  sender: address,
+  inputToken: chosenToken.address, // native ETH is the zero address
+});
+```
+
+Passing a token the target does not accept raises `TbiValidationError` before anything reaches the wallet.
+
+## Limits
+
+- **Same chain, accepted asset only.** `buildDeposit` produces direct deposits into registered targets. There is no swap or bridge routing here. Users holding a different asset or sitting on another chain need to swap or bridge first.
+- **Deposits only.** There is no withdraw path through the Forwarder. Users exit through your protocol directly, and doing so does not affect their activation.
+- **Registered targets only.** If `useForwarderTarget` returns `null`, the vault is not set up for Forwarder deposits. Ask the team to register it.
+
+## Keep Exploring
+
+<CardGroup cols={3}>
+  <Card title="Forwarder Deposits" href="/developers/guides/forwarder-deposits">
+    The endpoints, the target shape, and every deposit action type.
+  </Card>
+  <Card title="Earning Activation" href="/campaigns/earning-activation">
+    Why a campaign requires Forwarder deposits, and what it does not restrict.
+  </Card>
+  <Card title="Opportunities List" href="/developers/examples/opportunities-list">
+    Surface the campaign this button deposits into.
+  </Card>
+</CardGroup>

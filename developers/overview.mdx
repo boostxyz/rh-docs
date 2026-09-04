@@ -27,20 +27,24 @@ There is less to arrange than you might expect.
 
 ## What You Can Build
 
+Each of these is a complete React component for a Next.js, wagmi, and viem stack. Copy it, point it at your campaign, and ship. The guide behind each one explains the endpoints it calls.
+
 <CardGroup cols={2}>
-  <Card title="Display Campaign Stats" href="/developers/guides/display-campaign-stats">
-    Show a live reward APR, TVL, and participant count next to your own pool numbers. One request, no wallet.
+  <Card title="Opportunities List" icon="table-list" href="/developers/examples/opportunities-list">
+    A table of live campaigns with reward APR, TVL, and time remaining, for your own pools or a whole chain.
   </Card>
-  <Card title="Show User Rewards" href="/developers/guides/show-user-rewards">
-    Render what a user has earned and what they can claim, with every state in between.
+  <Card title="Rewards Panel" icon="coins" href="/developers/examples/rewards-panel">
+    What the connected wallet has earned and can claim, across every campaign it has entered.
   </Card>
-  <Card title="Claim Rewards" href="/developers/guides/claim-rewards">
-    Put a working claim button in your own UI: batched, simulated, and relayer-friendly.
+  <Card title="Claim Button" icon="hand-holding-dollar" href="/developers/examples/claim-button">
+    Switches chain, simulates, submits, waits for the receipt, and updates the UI safely.
   </Card>
-  <Card title="Forwarder Deposits" href="/developers/guides/forwarder-deposits">
-    Route deposits through the Boost Forwarder for campaigns that require activation.
+  <Card title="Deposit Button" icon="arrow-down-to-bracket" href="/developers/examples/deposit-button">
+    Routes a deposit through the Boost Forwarder for campaigns that require activation.
   </Card>
 </CardGroup>
+
+Start with [Project Setup](/developers/examples/setup) for the shared client, providers, and formatting helpers. Prefer the endpoint-level view? The same four outcomes are covered as [guides](/developers/guides/display-campaign-stats), with curl alongside TypeScript.
 
 ## SDK or Raw REST
 
@@ -61,7 +65,7 @@ const stats = await tbi.campaigns.stats({ chainId: 8453, campaignIndex: 56 });
 ```
 </CodeGroup>
 
-The base URL is `https://api-tbi.boost.xyz`, and the only server-side environments are production and local development. There is no partner-facing staging host.
+The production base URL is `https://api-tbi.boost.xyz`. A staging host, `https://api-tbi-staging.boost.xyz`, runs the same API against test campaigns that pay on Base Sepolia; see [Building Against Staging](/developers/examples/setup#building-against-staging).
 
 ## Shared Fundamentals
 

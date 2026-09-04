@@ -1,0 +1,140 @@
+---
+title: "Rewards Panel"
+description: "What the connected wallet has earned and can claim across every campaign, with a claim button on each row"
+---
+
+The rewards view users see on Rabbithole, inside your app. It lists every campaign the connected wallet has a position in, shows lifetime earnings next to the claimable amount, and puts a [Claim Button](/developers/examples/claim-button) on each row.
+
+This page assumes the client and helpers from [Project Setup](/developers/examples/setup).
+
+## Two Numbers per Row
+
+| Column | Field | Behaviour |
+| --- | --- | --- |
+| Earned | `accumulatedRewards` | Ticks up continuously while the position is held |
+| Claimable | `claimable` | Steps up each time a merkle root is published. Stays `0n` until the first one |
+
+The two differ by design, and the gap is normal. Show earned as the number that moves, and claimable as the number the button acts on. The full explanation is in [How Claiming Works](/developers/concepts/claiming#two-clocks).
+
+## The Component
+
+```tsx title="components/rewards-panel.tsx"
+"use client";
+
+import type { CampaignId, UserCampaignReward } from "@boostxyz/tbi-sdk";
+import { useQuery } from "@tanstack/react-query";
+import { useAccount } from "wagmi";
+import { campaignKey, campaignLabel, formatToken } from "@/lib/format";
+import { tbi } from "@/lib/tbi";
+import { ClaimButton } from "./claim-button";
+
+export function useUserRewards(address?: `0x${string}`) {
+  return useQuery({
+    queryKey: ["tbi", "rewards", address],
+    queryFn: () =>
+      tbi.rewards.forUser(address!, { status: ["active", "ended", "finalized"] }),
+    enabled: !!address,
+    refetchInterval: 60_000,
+  });
+}
+
+/** Campaign metadata never changes, so cache it for the session. */
+function useCampaign(id: CampaignId) {
+  return useQuery({
+    queryKey: ["tbi", "campaign", campaignKey(id)],
+    queryFn: () => tbi.campaigns.get(id),
+    staleTime: Infinity,
+  });
+}
+
+export function RewardsPanel() {
+  const { address } = useAccount();
+  const { data, isPending, error } = useUserRewards(address);
+
+  if (!address) return <p>Connect a wallet to see your rewards.</p>;
+  if (isPending) return <p>Loading rewards…</p>;
+  if (error) return <p>Could not load rewards.</p>;
+  if (data.data.length === 0) {
+    return <p>No rewards yet. Deposit into a live campaign to start earning.</p>;
+  }
+
+  return (
+    <table>
+      <thead>
+        <tr>
+          <th>Campaign</th>
+          <th>Earned</th>
+          <th>Claimable</th>
+          <th />
+        </tr>
+      </thead>
+      <tbody>
+        {data.data.map((reward) => (
+          <RewardRow key={campaignKey(reward.id)} reward={reward} />
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
+function RewardRow({ reward }: { reward: UserCampaignReward }) {
+  const { data: campaign } = useCampaign(reward.id);
+  const { decimals, symbol } = reward.rewardToken;
+
+  return (
+    <tr>
+      <td>{campaign ? campaignLabel(campaign) : campaignKey(reward.id)}</td>
+      <td>{formatToken(reward.accumulatedRewards, decimals, symbol)}</td>
+      <td>
+        {reward.claimable > 0n
+          ? formatToken(reward.claimable, decimals, symbol)
+          : "Accruing"}
+      </td>
+      <td>
+        <ClaimButton id={reward.id} />
+      </td>
+    </tr>
+  );
+}
+```
+
+Only campaigns the wallet has **already entered** appear. To show campaigns the user could join but has not, render the [Opportunities List](/developers/examples/opportunities-list) alongside.
+
+## Why the Extra Lookup
+
+`rewards.forUser` returns amounts and the reward token, but not the target being rewarded, so the row cannot label itself. The `useCampaign` hook fetches that once per campaign and caches it for the session. If you already know your campaign IDs, replace the lookup with your own map from ID to pool name.
+
+## States to Render
+
+The panel above collapses these into "Accruing" and an amount. A production panel usually spells them out:
+
+| Condition | Show |
+| --- | --- |
+| `claimable > 0n` | The amount and an active claim button |
+| `claimable === 0n`, `accumulatedRewards > 0n`, campaign still in its claim window | "Accruing, claimable after the next distribution" |
+| `claimable === 0n` and the claim window has closed | "Claim window closed". Never an accruing message |
+| Campaign `ended` or `finalized` with `claimable > 0n` | The claim button, exactly as for an active campaign |
+
+<Warning>
+  Do not gate the button on campaign status. Accrual stops when a campaign ends, but published rewards stay claimable, and `finalized` means everything earned is claimable. Gate on the amount.
+</Warning>
+
+The claim window comes from the campaign object fetched by `useCampaign`. See [Claim Windows](/developers/concepts/claiming#claim-windows).
+
+## Totals Across Campaigns
+
+Campaigns pay in different tokens, so there is no single "total claimable" to sum. Group by `rewardToken.address` if you want per-token totals, and use the [Claim All](/developers/examples/claim-button#claim-everything-at-once) button to settle every campaign on one chain in a single transaction.
+
+## Keep Exploring
+
+<CardGroup cols={3}>
+  <Card title="Claim Button" href="/developers/examples/claim-button">
+    The button each row renders.
+  </Card>
+  <Card title="Show User Rewards" href="/developers/guides/show-user-rewards">
+    The endpoints behind the panel and the formatting trap.
+  </Card>
+  <Card title="How Claiming Works" href="/developers/concepts/claiming">
+    Why earned and claimable move on different clocks.
+  </Card>
+</CardGroup>

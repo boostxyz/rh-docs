@@ -7,7 +7,7 @@ This is the Mintlify documentation site for Rabbithole (app.rabbithole.gg) and t
 - `docs.json` — site config and navigation. Four tabs: **Rabbithole** (end users), **Campaigns** (protocols running a campaign), **Developers** (SDK and integration guides), **API Reference** (generated from the live OpenAPI spec at `https://api-tbi.boost.xyz/v1/openapi.json`; do not hand-write endpoint pages).
 - `rabbithole/` — user-facing pages about the app: earning, tiers, raffle, referrals, FAQ.
 - `campaigns/` — the product concepts (reward model, lifecycle, modes, activation), pricing, partner referrals, launch process, glossary.
-- `developers/` — quickstart, concepts, guides, SDK, contracts, errors.
+- `developers/` — quickstart, examples (complete React + wagmi components, one per partner use case), concepts, guides (endpoint-level, curl + TypeScript), SDK, contracts, errors. Examples link down to the guide that explains their endpoints; do not duplicate endpoint detail in an example.
 - `images/rabbithole/` — app screenshots. `logo/` — wordmark (light/dark) and glyph.
 - `.claude/preview-open-questions.md` — unresolved review flags inherited from the draft developer pages. Resolve or remove before publishing the page they belong to.
 

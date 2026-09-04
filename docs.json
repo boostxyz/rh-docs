@@ -96,6 +96,16 @@
             ]
           },
           {
+            "group": "Examples",
+            "pages": [
+              "developers/examples/setup",
+              "developers/examples/opportunities-list",
+              "developers/examples/rewards-panel",
+              "developers/examples/claim-button",
+              "developers/examples/deposit-button"
+            ]
+          },
+          {
             "group": "Concepts",
             "pages": [
               "developers/concepts/campaigns",
