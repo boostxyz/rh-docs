@@ -1,72 +1,90 @@
 ---
 title: "Tiers and Leaderboard"
-description: "How the weekly leaderboard ranks you, what each tier unlocks, and how to climb"
+description: "How weekly claims determine your tier, raffle multiplier, and share of the weekly USDC reward pool"
 ---
 
-Everything you earn on Rabbithole feeds one leaderboard. Your place on it sets your **tier**, and your tier sets your perks: raffle entries, daily check-in, and access to gated campaigns.
+<Warning>
+  **Tiers, raffle entries, and weekly tier rewards are being rebuilt.** This page documents the upcoming rules. Rewards do not begin until the new system is enabled in Rabbithole.
+</Warning>
+
+Rewards you claim during each raffle week determine your tier for that week. Your tier controls your share of the weekly USDC reward pool and the multiplier used to calculate your [raffle entries](/rabbithole/raffle#how-entries-are-calculated).
 
 ## The Leaderboard
 
-<Frame>
-  <img src="/images/rabbithole/leaderboard-weekly.jpg" alt="The leaderboard panel on the Weekly tab, showing the viewer's position card with tier and top percentage, the top three earners with verified badges and USD earned, and the rows around the viewer's position." />
-</Frame>
+Each raffle contains four fixed, consecutive weekly periods. The weekly leaderboard starts fresh at the beginning of each period and ranks wallets by the unweighted USD value of rewards claimed during that week. It is not a rolling seven-day window.
 
-The leaderboard has two views.
+The current week remains live until its cutoff. Claims made during that period can move your rank and tier. When the week closes, Rabbithole settles the final claimed value, rank, and tier for that period. The next raffle-aligned week then begins.
 
-| View | Ranks on | Window |
-| --- | --- | --- |
-| **Weekly** | USD value of rewards earned | A rolling 7-day window that moves continuously. There is no fixed reset day. |
-| **All time** | USD value of rewards earned | Since you joined. |
+The all-time leaderboard remains a view of the USD value of rewards you have claimed since joining. It does not determine your weekly tier.
 
-The weekly view is the one that matters for tiers. It is rebuilt about once an hour, so a claim or a big deposit can take up to an hour to move your rank.
-
-Each row shows the rank, the X handle or address, the number of campaigns the person is earning in, and the amount earned. A check mark next to a name means a [verified account](/rabbithole/getting-started#verified-account).
+Each row shows the rank, the X handle or address, the number of campaigns the person is earning in, and the amount claimed. A check mark next to a name means a [verified account](/rabbithole/getting-started#verified-account).
 
 ## Tiers
 
-There are five tiers, in order:
+Your tier is based on the unweighted USD value of rewards you claim during the current week:
+
+| Tier | Weekly claimed USD |
+| --- | ---: |
+| Bronze | Under `$1` |
+| Silver | `$1` or more |
+| Gold | `$10` or more |
+| Platinum | `$25` or more |
+| Diamond | `$100` or more |
+
+Everyone starts each weekly period at Bronze. Your tier can only move upward as you claim more during that week. At the weekly cutoff, your tier is finalized for that period and used for both the weekly reward calculation and that week's raffle-entry calculation.
+
+<Note>
+  Campaign multipliers do not affect your tier. Rabbithole uses your unweighted claimed USD to determine the tier, then applies campaign multipliers only when calculating raffle entries.
+</Note>
+
+## The Weekly Reward Pool
+
+Rabbithole distributes a **$500 USDC pool each week**, for a total of **$2,000 USDC across the four-week raffle**. Silver, Gold, Platinum, and Diamond wallets share the pool. Bronze has a weight of `0` and does not receive a share.
+
+| Tier | Reward weight |
+| --- | ---: |
+| Bronze | `0` |
+| Silver | `100` |
+| Gold | `110` |
+| Platinum | `125` |
+| Diamond | `150` |
+
+The weights make each claimed dollar count more at higher tiers. They are relative weights, not fixed USDC amounts or percentage returns.
+
+```text
+wallet score = weekly claimed USD × tier weight
+
+wallet reward =
+  $500 × wallet score / sum of all eligible wallet scores
+```
+
+For example, a Gold wallet that claims `$20` has a score of `20 × 110 = 2,200`. Its final reward is `$500 × 2,200` divided by the sum of every eligible wallet's score that week. Because that total changes as other people claim, any reward shown before the cutoff is a projection.
+
+### Settlement and Publication
 
 <Steps>
-  <Step title="Bronze">
-    Everyone starts here.
+  <Step title="The Week Closes">
+    Rabbithole fixes each wallet's claimed USD, tier, score, and share of that week's pool. Final amounts are calculated to USDC precision.
   </Step>
-  <Step title="Silver">
-    You have earned enough this week to place ahead of the bottom of the board.
+  <Step title="Rewards Are Published">
+    Your weekly amount is added to your total for the four-week cycle. Rabbithole publishes the latest cumulative entitlement through a reward campaign, so each update includes all settled weeks so far.
   </Step>
-  <Step title="Gold">
-    Roughly the top tenth of weekly earners. Unlocks daily check-in.
-  </Step>
-  <Step title="Platinum">
-    Roughly the top hundredth.
-  </Step>
-  <Step title="Diamond">
-    Roughly the top thousandth.
+  <Step title="You Claim">
+    Once the latest reward data is published, the app shows the unpaid amount as claimable. You can claim during the cycle; when another week is published, you can claim the newly added balance without claiming an earlier week twice.
   </Step>
 </Steps>
 
-Your tier is read from your weekly rank, so it can move in either direction. Earn more than the people around you and you climb. Withdraw, or let others out-earn you, and you drop when the window rolls past your best days.
+If no eligible wallet records a positive score in a week, no share is allocated from that week's pool.
 
-<Note>
-  The exact cut-offs are set by Rabbithole and shown in the app. Tiers and the entries they give are being reworked alongside the [raffle](/rabbithole/raffle) rebuild, so expect the boundaries above to change.
-</Note>
+## Raffle Entries
 
-### The Deposit Goal
+The weekly reward pool does not use campaign multipliers. Raffle entries do: each eligible campaign's claimed USD is weighted by its campaign multiplier, then your weekly tier multiplier is applied and the result is rounded down.
 
-The ring on the home dashboard shows your deposits against a **tier goal**, with an estimate of what you could earn a year at the next tier. It is a guide to how much you would typically need deposited to sit in that tier at current rates, not a rule. Rank is what actually sets your tier.
+See [Raffle](/rabbithole/raffle) for the complete entry formula, public snapshot, on-chain commitment, and winner-verification steps.
 
-## Benefits
+## How to Reach the Next Tier
 
-Open **Benefits** from the rank card or the profile menu to see what your tier is giving you right now and what you need to keep it.
-
-| Benefit | How it works |
-| --- | --- |
-| **Raffle entries** | Every week you receive a number of raffle entries based on the tier you hold that week. Higher tiers get far more. See [Raffle](/rabbithole/raffle). |
-| **Daily check-in** | From Gold upward, check in once a day to build a streak and earn a small reward. |
-| **Keep what you have** | The panel tells you which tier to hold through the next weekly cutoff to keep your projected entries. |
-
-## How to Climb
-
-- **Deposit more.** Your share of every campaign's rewards is proportional to your balance.
-- **Stay in.** Rewards accrue every second, so a position held all week beats one opened on Friday.
-- **Spread across campaigns.** The board counts earnings from every campaign together.
-- **Chase the APY.** Campaigns early in their life often pay the highest rates because few people have joined.
+- Claim at least `$1` during the week to reach Silver and become eligible for both systems.
+- Claim across any eligible Rabbithole campaigns. All unweighted claimed USD counts toward the tier threshold.
+- Check the weekly cutoff before claiming. A claim counts in the weekly period in which it is recorded.
+- Look for a campaign's `1×`, `2×`, or `5×` multiplier when you want to increase raffle entries; it does not increase your weekly reward-pool score.
