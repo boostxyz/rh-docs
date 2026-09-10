@@ -28,11 +28,11 @@ This is the Mintlify documentation site for Rabbithole (app.rabbithole.gg) and t
 - Screenshots go in `<Frame>` with a descriptive `alt`.
 - Escape `<`, `{`, and `}` in prose; MDX treats them as JSX.
 
-## Things that change and must not be hard-coded as permanent
+## Current Product Rules
 
-- **Raffle and tier rules** were rebuilt in September 2026 (four-week raffle, claim-based weekly tiers, weekly USDC pool). Prizes are announced per raffle and are not committed on-chain, so do not document prize amounts as fixed. Tier thresholds, multipliers, and the 500 USDC weekly pool are current configuration.
+- **Raffle and tier rules** were rebuilt in September 2026 (four-week raffle, claim-based weekly tiers, weekly USDC pool). Every monthly raffle awards three fixed prizes: 3,000 USDC, 1,500 USDC, and 500 USDC. Prize amounts are not committed on-chain. Tier thresholds, multipliers, and the 500 USDC weekly pool are current configuration.
 - **Pricing** on `campaigns/pricing.mdx` is a proposal under review.
-- Numbers observed in the live app (tier entry counts, prize size, cut-offs) are examples of the current configuration, not commitments.
+- Other numbers observed in the live app (tier entry counts and cut-offs) are examples of the current configuration, not commitments.
 
 ## Animated components (snippets)
 

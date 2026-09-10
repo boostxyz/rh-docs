@@ -11,9 +11,15 @@ The raffle and the [weekly USDC reward pool](/rabbithole/tiers-and-leaderboard#t
 
 ## Prizes
 
-Rabbithole announces the prizes for each raffle on the website before the draw. Prizes are usually paid in USDC and can change from one raffle to the next.
+Rabbithole awards three fixed prizes every month:
 
-The public snapshot commits the wallets, entry counts, and number of winners. It does not commit prize amounts, which is why they are announced every month.
+| Rank | Prize |
+| --- | ---: |
+| First | **3,000 USDC** |
+| Second | **1,500 USDC** |
+| Third | **500 USDC** |
+
+The three prizes total **5,000 USDC**. The public snapshot commits the wallets, entry counts, and three winners. It does not include the prize amounts; those follow the fixed schedule above.
 
 ## How Entries Are Calculated
 
@@ -246,7 +252,7 @@ for (let i = 0; i < snapshot.numberOfWinners; i += 1) {
 console.log({ raffleId: snapshot.raffleId, snapshotHash: computedHash, winners });
 ```
 
-For raffle `2`, the verifier reports a single winner, `0x822e04f2050e146f824a908c5dd1bfd34935df8a`. Anyone running it against the public snapshot and the on-chain random number gets the same result, which is what proves that wallet won.
+For the historical raffle `2`, the verifier reports a single winner, `0x822e04f2050e146f824a908c5dd1bfd34935df8a`. Anyone running it against the public snapshot and the on-chain random number gets the same result.
 
 <Note>
   The verifier needs only the public snapshot, the RaffleManager address, and an RPC endpoint. Use a trusted Base RPC provider for independent verification.
@@ -254,4 +260,4 @@ For raffle `2`, the verifier reports a single winner, `0x822e04f2050e146f824a908
 
 ## Claiming Prizes
 
-Winners are shown on the raffle page after Pyth fulfills the randomness request and Rabbithole runs the draw. If you won, the raffle page shows your prize and a **Claim** button once the prize is ready to be paid. Prize rank `1` receives the first prize, rank `2` the second, and so on.
+Winners are shown on the raffle page after Pyth fulfills the randomness request and Rabbithole runs the draw. If you won, the raffle page shows your prize and a **Claim** button once the prize is ready to be paid. Prize rank `1` receives 3,000 USDC, rank `2` receives 1,500 USDC, and rank `3` receives 500 USDC.
