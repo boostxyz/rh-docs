@@ -30,7 +30,7 @@ This is the Mintlify documentation site for Rabbithole (app.rabbithole.gg) and t
 
 ## Things that change and must not be hard-coded as permanent
 
-- **Raffle mechanics and tier boundaries** are being rebuilt (announced in-app, September 2026). Keep the warning on `rabbithole/raffle.mdx` until the new rules ship, then rewrite the page.
+- **Raffle and tier rules** were rebuilt in September 2026 (four-week raffle, claim-based weekly tiers, weekly USDC pool). Prizes are announced per raffle and are not committed on-chain, so do not document prize amounts as fixed. Tier thresholds, multipliers, and the 500 USDC weekly pool are current configuration.
 - **Pricing** on `campaigns/pricing.mdx` is a proposal under review.
 - Numbers observed in the live app (tier entry counts, prize size, cut-offs) are examples of the current configuration, not commitments.
 
@@ -45,7 +45,7 @@ Interactive pieces ported from the landing site live in `snippets/*.mdx` and are
 - No `//` comments outside an export block. They render as text.
 - Hooks (`useState`, `useEffect`, `useRef`) are injected. No imports, no npm packages, no `useLayoutEffect` or `useId`.
 - Import into a page with `import { X } from "/snippets/x.mdx"` directly under the frontmatter.
-- The local CLI must be current: `pnpm add -g mint@latest && mint update`. Kill dev servers by PID; `mint dev` restarts otherwise stack on new ports.
+- The local CLI must be current: `pnpm add -g mint@latest --config.node-linker=hoisted && mint update`. The hoisted flag is required with pnpm 11: `@mintlify/link-rot` imports `react` without declaring it, so the default isolated layout crashes on launch with `ERR_MODULE_NOT_FOUND`. Kill dev servers by PID; `mint dev` restarts otherwise stack on new ports.
 
 ## Validation
 

@@ -3,15 +3,23 @@ title: "Raffle"
 description: "How raffle entries are calculated and how to verify the draw from the public snapshot and on-chain randomness"
 ---
 
-One raffle spans four weekly entry-allocation periods. Your entries from all four weeks are added together for the final draw, and each wallet can win only once in a raffle.
+Each raffle runs for four weeks. At the end of every week, the rewards you claimed that week and the tier they earned you are turned into raffle entries. When the fourth week closes, your entries from all four weeks are added together, frozen in a public snapshot, and a public random number picks the winners.
 
-The raffle draw and the [500 USDC weekly tier reward pool](/rabbithole/tiers-and-leaderboard#the-weekly-reward-pool) are separate systems. Both use the same weekly tier, but they calculate rewards differently.
+Entries are counted per wallet. If you have linked more than one wallet, each wallet earns entries from its own claims and appears in the snapshot on its own.
+
+The raffle and the [weekly USDC reward pool](/rabbithole/tiers-and-leaderboard#the-weekly-reward-pool) are separate. Both use the same weekly tier, but they calculate rewards differently.
+
+## Prizes
+
+Rabbithole announces the prizes for each raffle on the website before the draw. Prizes are usually paid in USDC and can change from one raffle to the next.
+
+The public snapshot commits the wallets, entry counts, and number of winners. It does not commit prize amounts, which is why they are announced every month.
 
 ## How Entries Are Calculated
 
-At the end of each week, Rabbithole determines your tier from the unweighted USD value of rewards you claimed during that week. See [Tiers and Leaderboard](/rabbithole/tiers-and-leaderboard#tiers) for the thresholds and timing.
+At the end of each week, Rabbithole determines your tier from the USD value of rewards you claimed during that week, before any campaign multiplier. See [Tiers and Leaderboard](/rabbithole/tiers-and-leaderboard#tiers) for the thresholds and cutoff.
 
-Each eligible campaign has a campaign multiplier of `1×`, `2×`, or `5×`. This multiplier weights the claimed USD from that campaign before your tier multiplier is applied.
+Every campaign has a campaign multiplier. The default is `1×`, and selected campaigns carry `2×` or `5×`. The multiplier weights the USD you claimed from that campaign before your tier multiplier is applied. It does not change your tier.
 
 | Tier | Entry multiplier |
 | --- | ---: |
@@ -31,22 +39,24 @@ weekly entries = floor(weighted claimed USD × tier multiplier)
 
 Suppose you claim `$10.25` from a `1×` campaign and `$1.50` from a `5×` campaign during one week.
 
-1. Your unweighted claimed value is `$11.75`, which puts you in Gold for that week.
+1. Your claimed value before multipliers is `$11.75`, which puts you in Gold for that week.
 2. Your weighted claimed value is `$10.25 × 1 + $1.50 × 5 = $17.75`.
 3. Gold has a `2×` tier multiplier, so the result is `$17.75 × 2 = 35.5`.
 4. The result is rounded down, giving you **35 entries** for the week.
 
-The campaign multiplier changes the contribution from a particular campaign. The tier multiplier applies once to the total weighted value. Your four finalized weekly entry totals are combined when the raffle closes.
+The campaign multiplier changes how much a particular campaign contributes. The tier multiplier applies once to the weighted total. Your four finalized weekly entry totals are added together when the raffle closes.
+
+When you are signed in, the app shows the weekly and monthly cutoffs. Open the raffle page from the ticket button to see your entries.
 
 ## The Public Snapshot
 
-After the fourth week, the entry pool is frozen in a public snapshot:
+When the fourth week closes, the entry pool is frozen in a public snapshot:
 
 ```http
 GET https://api-tbi.boost.xyz/raffles/{raffleId}/snapshot
 ```
 
-The endpoint returns canonical JSON in this shape:
+The endpoint returns compact JSON with no whitespace. Pretty-printed, it has this shape:
 
 ```json
 {
@@ -69,13 +79,13 @@ The endpoint returns canonical JSON in this shape:
 }
 ```
 
-`raffleId` identifies the draw, `numberOfWinners` fixes the number of draws, `rows` contains every eligible wallet and its entry count, and `totalTickets` is the sum of those counts. Entry counts are strings so large integers remain exact.
+`raffleId` identifies the draw, `numberOfWinners` fixes the number of draws, `rows` lists every eligible wallet with its entry count, and `totalTickets` is the sum of those counts. Entry counts are strings so large integers stay exact.
 
 Wallet addresses are lowercase and sorted lexicographically. `canonicalIndex` is the wallet's zero-based position in that order. The order matters when reproducing the winners.
 
-## The On-Chain Commitment
+## On-Chain Commitment
 
-Rabbithole hashes the exact compact UTF-8 JSON with `keccak256` before requesting randomness. To reconstruct the committed object, preserve this property order:
+Before requesting randomness, Rabbithole hashes the snapshot with `keccak256`. The hash covers the exact UTF-8 bytes the endpoint returns, so hashing the raw response body reproduces it. If you rebuild the object yourself, serialize it with no whitespace and preserve this property order:
 
 1. `version`
 2. `raffleId`
@@ -105,16 +115,18 @@ drawHash[i] = keccak256(
 target[i] = uint256(drawHash[i]) mod remainingEntries
 ```
 
-Walk the wallets in ascending `canonicalIndex`, adding their entry counts until the target falls inside a wallet's range. Record that wallet, remove it and all of its entries, and then calculate the next draw against the new `remainingEntries` total. This removal is what prevents one wallet from winning twice.
+Walk the wallets in ascending `canonicalIndex`, adding their entry counts until the target falls inside a wallet's range. Record that wallet, remove it and all of its entries, and then calculate the next draw against the new `remainingEntries` total. Because a winning wallet leaves the pool, each wallet can win at most once per raffle.
 
 Draw `0` is prize rank `1`, draw `1` is prize rank `2`, and so on.
 
 ### TypeScript Verifier
 
-Save this as `verify-raffle.ts`, install `viem`, and run it with a snapshot URL, the RaffleManager address, and a Base RPC endpoint:
+Save this as `verify-raffle.mts`, install `viem` and `tsx`, and run it with a snapshot URL, the RaffleManager address, and a Base RPC endpoint:
 
 ```bash
-npx tsx verify-raffle.ts \
+npm install viem tsx
+
+npx tsx verify-raffle.mts \
   https://api-tbi.boost.xyz/raffles/2/snapshot \
   0xbd4452ca27e71c9bd00fac9da50460d617d5d3ff \
   https://mainnet.base.org
@@ -148,7 +160,7 @@ type Snapshot = {
 
 const [snapshotUrl, managerAddress, rpcUrl] = process.argv.slice(2);
 if (!snapshotUrl || !managerAddress || !rpcUrl) {
-  throw new Error("Usage: tsx verify-raffle.ts <snapshot-url> <manager-address> <rpc-url>");
+  throw new Error("Usage: tsx verify-raffle.mts <snapshot-url> <manager-address> <rpc-url>");
 }
 
 const response = await fetch(snapshotUrl);
@@ -234,12 +246,12 @@ for (let i = 0; i < snapshot.numberOfWinners; i += 1) {
 console.log({ raffleId: snapshot.raffleId, snapshotHash: computedHash, winners });
 ```
 
+For raffle `2`, the verifier reports a single winner, `0x822e04f2050e146f824a908c5dd1bfd34935df8a`. Anyone running it against the public snapshot and the on-chain random number gets the same result, which is what proves that wallet won.
+
 <Note>
   The verifier needs only the public snapshot, the RaffleManager address, and an RPC endpoint. Use a trusted Base RPC provider for independent verification.
 </Note>
 
 ## Claiming Prizes
 
-Winners appear after Pyth fulfills the randomness request and Rabbithole completes the deterministic draw. A prize becomes claimable after the reward campaign and its claim data are published. If you won, the raffle panel shows your prize and a **Claim** button when it is ready.
-
-The snapshot commits the wallets, entry counts, and number of winners. It does **not** commit prize amounts. Prize ranks and amounts are published separately through the raffle's reward campaign.
+Winners are shown on the raffle page after Pyth fulfills the randomness request and Rabbithole runs the draw. If you won, the raffle page shows your prize and a **Claim** button once the prize is ready to be paid. Prize rank `1` receives the first prize, rank `2` the second, and so on.
