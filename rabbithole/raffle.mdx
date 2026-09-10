@@ -1,68 +1,257 @@
 ---
 title: "Raffle"
-description: "How the monthly raffle works: earning entries from your tier, bonus entries, the draw, and claiming a prize"
+description: "How raffle entries are calculated and how to verify the draw from the public snapshot and on-chain randomness"
 ---
 
-<Warning>
-  **The raffle is being rebuilt.** After the August 2026 draw, the raffle pauses while Rabbithole reworks how tiers and entries work. No new entries are added during the pause. The mechanics below describe the raffle as it ran up to that draw and will be updated when it returns.
-</Warning>
+Each raffle runs for four weeks. At the end of every week, the rewards you claimed that week and the tier they earned you are turned into raffle entries. When the fourth week closes, your entries from all four weeks are added together, frozen in a public snapshot, and a public random number picks the winners.
 
-Rabbithole runs one raffle draw a month. Entries come from your tier, land every week, and are locked in a public snapshot before a public random number picks the winners. The prize is funded by Rabbithole's protocol fees, not by any campaign's reward budget.
+Entries are counted per wallet. If you have linked more than one wallet, each wallet earns entries from its own claims and appears in the snapshot on its own.
 
-<Frame>
-  <img src="/images/rabbithole/raffle-panel.jpg" alt="The raffle panel showing a 5,000 USDC prize, a countdown to the draw, the viewer's 226 entries split into base and bonus entries, base entries by tier from Bronze at 0 to Diamond at 5,000, and a prompt to reach Platinum for more entries." />
-</Frame>
+The raffle and the [weekly USDC reward pool](/rabbithole/tiers-and-leaderboard#the-weekly-reward-pool) are separate. Both use the same weekly tier, but they calculate rewards differently.
 
-## Earning Entries
+## Prizes
 
-There are two kinds of entries, and they add together.
+Rabbithole announces the prizes for each raffle on the website before the draw. Prizes are usually paid in USDC and can change from one raffle to the next.
 
-### Base entries
+The public snapshot commits the wallets, entry counts, and number of winners. It does not commit prize amounts, which is why they are announced every month.
 
-Every week, you receive base entries for the tier you hold that week. The higher the tier, the more entries.
+## How Entries Are Calculated
 
-| Tier | Base entries per week |
-| --- | --- |
-| Bronze | 0 |
-| Silver | 10 |
-| Gold | 100 |
-| Platinum | 1,000 |
-| Diamond | 5,000 |
+At the end of each week, Rabbithole determines your tier from the USD value of rewards you claimed during that week, before any campaign multiplier. See [Tiers and Leaderboard](/rabbithole/tiers-and-leaderboard#tiers) for the thresholds and cutoff.
 
-A tier change counts from the next weekly drop. Entries already awarded keep the rate they were awarded at, so dropping a tier late in the month does not take earlier entries away.
+Every campaign has a campaign multiplier. The default is `1×`, and selected campaigns carry `2×` or `5×`. The multiplier weights the USD you claimed from that campaign before your tier multiplier is applied. It does not change your tier.
 
-Weeks are counted from the start of the raffle period. The **Week by week** section of the raffle panel shows the tier, rank, and earnings that produced each week's entries, plus a projection for the week in progress.
+| Tier | Entry multiplier |
+| --- | ---: |
+| Bronze | `0×` |
+| Silver | `1×` |
+| Gold | `2×` |
+| Platinum | `4×` |
+| Diamond | `8×` |
 
-### Bonus entries
+```text
+weighted claimed USD = Σ(claimed USD from campaign × campaign multiplier)
 
-Featured campaigns can carry a perk such as **100 raffle entries for every $1 you claim**. Claim rewards on that campaign and the bonus entries stack on top of your base entries. They are credited on the weekly drop along with everything else, and show as projected until then.
+weekly entries = floor(weighted claimed USD × tier multiplier)
+```
 
-## The Draw
+### Worked Example
 
-<Steps>
-  <Step title="Cutoff">
-    At the end of the period, entries lock. The panel shows the countdown.
-  </Step>
-  <Step title="Snapshot">
-    All entries are written into a public snapshot. The snapshot hash is shown in the panel, so anyone can verify the pool.
-  </Step>
-  <Step title="Random number">
-    A public random number is requested and used to pick the winners against the snapshot.
-  </Step>
-  <Step title="Prizes">
-    Winners are announced in the panel and claim their prize from it. Prizes are paid in USDC on Base.
-  </Step>
-</Steps>
+Suppose you claim `$10.25` from a `1×` campaign and `$1.50` from a `5×` campaign during one week.
 
-Your odds are your entries divided by the total entries in the pool. The panel shows this as "1 in N".
+1. Your claimed value before multipliers is `$11.75`, which puts you in Gold for that week.
+2. Your weighted claimed value is `$10.25 × 1 + $1.50 × 5 = $17.75`.
+3. Gold has a `2×` tier multiplier, so the result is `$17.75 × 2 = 35.5`.
+4. The result is rounded down, giving you **35 entries** for the week.
 
-## Previous Draws
+The campaign multiplier changes how much a particular campaign contributes. The tier multiplier applies once to the weighted total. Your four finalized weekly entry totals are added together when the raffle closes.
 
-Switch the panel to **Previous** to see past draws, the winning entries, and whether you won. If you did, a **Claim** button appears there until you take the prize.
+When you are signed in, the app shows the weekly and monthly cutoffs. Open the raffle page from the ticket button to see your entries.
 
-## Rules
+## The Public Snapshot
 
-- You need a signed-in account with a linked wallet to earn entries.
-- Bronze tier earns no base entries. Reach Silver to start.
-- Entries are per account, not per wallet. Linking more wallets does not multiply them.
-- Rabbithole may exclude entries that come from abuse, such as wash activity across accounts, and may pause or change the raffle. The in-app panel is the source of truth for the current period.
+When the fourth week closes, the entry pool is frozen in a public snapshot:
+
+```http
+GET https://api-tbi.boost.xyz/raffles/{raffleId}/snapshot
+```
+
+The endpoint returns compact JSON with no whitespace. Pretty-printed, it has this shape:
+
+```json
+{
+  "version": 2,
+  "raffleId": 3,
+  "numberOfWinners": 3,
+  "rows": [
+    {
+      "canonicalIndex": 0,
+      "walletAddress": "0x1111111111111111111111111111111111111111",
+      "ticketCount": "50"
+    },
+    {
+      "canonicalIndex": 1,
+      "walletAddress": "0x2222222222222222222222222222222222222222",
+      "ticketCount": "75"
+    }
+  ],
+  "totalTickets": "125"
+}
+```
+
+`raffleId` identifies the draw, `numberOfWinners` fixes the number of draws, `rows` lists every eligible wallet with its entry count, and `totalTickets` is the sum of those counts. Entry counts are strings so large integers stay exact.
+
+Wallet addresses are lowercase and sorted lexicographically. `canonicalIndex` is the wallet's zero-based position in that order. The order matters when reproducing the winners.
+
+## On-Chain Commitment
+
+Before requesting randomness, Rabbithole hashes the snapshot with `keccak256`. The hash covers the exact UTF-8 bytes the endpoint returns, so hashing the raw response body reproduces it. If you rebuild the object yourself, serialize it with no whitespace and preserve this property order:
+
+1. `version`
+2. `raffleId`
+3. `numberOfWinners`
+4. `rows`
+5. `totalTickets`
+
+Each row must use `canonicalIndex`, `walletAddress`, then `ticketCount`. Rows stay in ascending `canonicalIndex` order with no extra properties.
+
+The production RaffleManager is deployed on **Base mainnet (chain ID `8453`)** at [`0xbd4452ca27e71c9bd00fac9da50460d617d5d3ff`](https://basescan.org/address/0xbd4452ca27e71c9bd00fac9da50460d617d5d3ff). Read `getRaffle(raffleId).snapshotHash` and compare it case-insensitively with your computed hash. A match proves that the published wallets, entry counts, and winner count are the inputs committed before the draw.
+
+## Pyth Randomness
+
+RaffleManager requests randomness from [Pyth Entropy V2](https://docs.pyth.network/entropy). Pyth fulfills the request in a later transaction, and RaffleManager records the final `randomNumber` on-chain in the `RaffleFulfilled` event and the raffle record.
+
+You can inspect [RaffleManager events on BaseScan](https://basescan.org/address/0xbd4452ca27e71c9bd00fac9da50460d617d5d3ff#events). For example, [this fulfillment transaction](https://basescan.org/tx/0x83f2e469eabe6fb4bc93d58dcfc20417990b022745455a12ce70e4c410281b1b) recorded the random number for raffle `2`.
+
+## Reproducing the Winners
+
+For each draw index `i`, starting at `0`, calculate:
+
+```text
+drawHash[i] = keccak256(
+  abi.encodePacked(randomNumber, uint256(i))
+)
+
+target[i] = uint256(drawHash[i]) mod remainingEntries
+```
+
+Walk the wallets in ascending `canonicalIndex`, adding their entry counts until the target falls inside a wallet's range. Record that wallet, remove it and all of its entries, and then calculate the next draw against the new `remainingEntries` total. Because a winning wallet leaves the pool, each wallet can win at most once per raffle.
+
+Draw `0` is prize rank `1`, draw `1` is prize rank `2`, and so on.
+
+### TypeScript Verifier
+
+Save this as `verify-raffle.mts`, install `viem` and `tsx`, and run it with a snapshot URL, the RaffleManager address, and a Base RPC endpoint:
+
+```bash
+npm install viem tsx
+
+npx tsx verify-raffle.mts \
+  https://api-tbi.boost.xyz/raffles/2/snapshot \
+  0xbd4452ca27e71c9bd00fac9da50460d617d5d3ff \
+  https://mainnet.base.org
+```
+
+```ts
+import {
+  createPublicClient,
+  encodePacked,
+  http,
+  keccak256,
+  toBytes,
+  type Address,
+  type Hex,
+} from "viem";
+import { base } from "viem/chains";
+
+type SnapshotRow = {
+  canonicalIndex: number;
+  walletAddress: Address;
+  ticketCount: string;
+};
+
+type Snapshot = {
+  version: 2;
+  raffleId: number;
+  numberOfWinners: number;
+  rows: SnapshotRow[];
+  totalTickets: string;
+};
+
+const [snapshotUrl, managerAddress, rpcUrl] = process.argv.slice(2);
+if (!snapshotUrl || !managerAddress || !rpcUrl) {
+  throw new Error("Usage: tsx verify-raffle.mts <snapshot-url> <manager-address> <rpc-url>");
+}
+
+const response = await fetch(snapshotUrl);
+if (!response.ok) throw new Error(`Snapshot request failed: ${response.status}`);
+const input = (await response.json()) as Snapshot;
+
+const rows = input.rows.map((row, index) => {
+  const walletAddress = row.walletAddress.toLowerCase() as Address;
+  if (row.canonicalIndex !== index) throw new Error("Invalid canonicalIndex order");
+  if (row.walletAddress !== walletAddress) throw new Error("Wallet is not lowercase");
+  if (index > 0 && input.rows[index - 1]!.walletAddress >= walletAddress) {
+    throw new Error("Wallets are not in lexicographic order");
+  }
+  if (BigInt(row.ticketCount) <= 0n) throw new Error("Invalid ticketCount");
+  return { canonicalIndex: index, walletAddress, ticketCount: row.ticketCount };
+});
+
+const totalTickets = rows.reduce((sum, row) => sum + BigInt(row.ticketCount), 0n);
+if (totalTickets !== BigInt(input.totalTickets)) throw new Error("totalTickets mismatch");
+if (input.numberOfWinners < 1 || input.numberOfWinners > rows.length) {
+  throw new Error("Invalid numberOfWinners");
+}
+
+const snapshot: Snapshot = {
+  version: input.version,
+  raffleId: input.raffleId,
+  numberOfWinners: input.numberOfWinners,
+  rows,
+  totalTickets: input.totalTickets,
+};
+const computedHash = keccak256(toBytes(JSON.stringify(snapshot)));
+
+const client = createPublicClient({ chain: base, transport: http(rpcUrl) });
+const raffle = await client.readContract({
+  address: managerAddress as Address,
+  abi: [{
+    type: "function",
+    name: "getRaffle",
+    stateMutability: "view",
+    inputs: [{ name: "raffleId", type: "uint256" }],
+    outputs: [{
+      name: "",
+      type: "tuple",
+      components: [
+        { name: "snapshotHash", type: "bytes32" },
+        { name: "randomNumber", type: "bytes32" },
+        { name: "sequenceNumber", type: "uint64" },
+        { name: "requestedAt", type: "uint64" },
+        { name: "status", type: "uint8" },
+      ],
+    }],
+  }] as const,
+  functionName: "getRaffle",
+  args: [BigInt(snapshot.raffleId)],
+});
+
+if (computedHash.toLowerCase() !== raffle.snapshotHash.toLowerCase()) {
+  throw new Error(`Snapshot hash mismatch: ${computedHash} != ${raffle.snapshotHash}`);
+}
+if (raffle.randomNumber === `0x${"00".repeat(32)}`) {
+  throw new Error("Randomness has not been fulfilled");
+}
+
+let pool = rows.map((row) => ({ ...row, entries: BigInt(row.ticketCount) }));
+const winners: Array<{ prizeRank: number; walletAddress: Address }> = [];
+
+for (let i = 0; i < snapshot.numberOfWinners; i += 1) {
+  const remainingEntries = pool.reduce((sum, row) => sum + row.entries, 0n);
+  const drawHash = keccak256(
+    encodePacked(["bytes32", "uint256"], [raffle.randomNumber as Hex, BigInt(i)]),
+  );
+  const target = BigInt(drawHash) % remainingEntries;
+  let cumulative = 0n;
+  const winnerIndex = pool.findIndex((row) => {
+    cumulative += row.entries;
+    return target < cumulative;
+  });
+  if (winnerIndex === -1) throw new Error("No winner found");
+  const [winner] = pool.splice(winnerIndex, 1);
+  winners.push({ prizeRank: i + 1, walletAddress: winner!.walletAddress });
+}
+
+console.log({ raffleId: snapshot.raffleId, snapshotHash: computedHash, winners });
+```
+
+For raffle `2`, the verifier reports a single winner, `0x822e04f2050e146f824a908c5dd1bfd34935df8a`. Anyone running it against the public snapshot and the on-chain random number gets the same result, which is what proves that wallet won.
+
+<Note>
+  The verifier needs only the public snapshot, the RaffleManager address, and an RPC endpoint. Use a trusted Base RPC provider for independent verification.
+</Note>
+
+## Claiming Prizes
+
+Winners are shown on the raffle page after Pyth fulfills the randomness request and Rabbithole runs the draw. If you won, the raffle page shows your prize and a **Claim** button once the prize is ready to be paid. Prize rank `1` receives the first prize, rank `2` the second, and so on.
