@@ -1,0 +1,128 @@
+---
+title: "Reward Badge"
+description: "A compact card for your own vault page: the campaign's reward APR, your vault's own APR, time left, and what the connected wallet has earned"
+---
+
+If you run a campaign on your own vault, this is usually the first thing to ship. It sits next to the deposit form you already have and answers the questions a depositor asks: is there a reward here, how much, for how long, and what have I earned so far. Deposits keep going through your own frontend; nothing about your deposit flow changes.
+
+This page assumes the client and helpers from [Project Setup](/developers/examples/setup).
+
+## What It Shows
+
+| Line | Field | Notes |
+| --- | --- | --- |
+| Reward APR | `boostApyBps` | The headline. The badge hides itself when this is `null` |
+| Vault APR | `protocolApyBps` | What your vault pays on its own. Shown on its own line, never silently summed |
+| Paid in | `rewardToken.symbol` | What depositors earn |
+| Time left | `estimatedEndDate`, falling back to `endTime` | Via the `endsIn` helper, which handles open-ended campaigns |
+| You've earned | `userPosition.accumulatedRewards` | Only when a wallet is connected and has a position |
+| Ready to claim | `userPosition.claimable` | Only when a published root covers some of it |
+
+## The Component
+
+The badge finds the campaign by your vault's address, on the chain the vault lives on. One request covers both the campaign and the connected wallet's position: passing `userAddress` fills in `userPosition`.
+
+```tsx title="components/reward-badge.tsx"
+"use client";
+
+import type { Campaign } from "@boostxyz/tbi-sdk";
+import { useQuery } from "@tanstack/react-query";
+import { useAccount } from "wagmi";
+import { endsIn, formatBps, formatToken } from "@/lib/format";
+import { tbi } from "@/lib/tbi";
+
+type Vault = { chainId: number; address: `0x${string}` };
+
+/** The live campaign on this vault, with the wallet's position when connected. */
+export function useVaultCampaign(vault: Vault, userAddress?: `0x${string}`) {
+  return useQuery({
+    queryKey: ["tbi", "vault-campaign", vault.chainId, vault.address, userAddress],
+    queryFn: () => tbi.campaigns.active({ target: vault, userAddress }),
+    refetchInterval: 60_000,
+    // Several campaigns can reward one vault. Show the one paying the most.
+    select: ({ data }) =>
+      [...data]
+        .filter((c) => c.boostApyBps !== null && c.budgetExhausted !== true)
+        .sort((a, b) => Number(b.boostApyBps! - a.boostApyBps!))[0] ?? null,
+  });
+}
+
+export function RewardBadge({ vault }: { vault: Vault }) {
+  const { address } = useAccount();
+  const { data: campaign } = useVaultCampaign(vault, address);
+
+  // No live campaign, or nothing worth showing: render nothing at all.
+  if (!campaign) return null;
+
+  return (
+    <aside aria-label="Campaign rewards">
+      <p>
+        <strong>+{formatBps(campaign.boostApyBps)}</strong> reward APR, paid in{" "}
+        {campaign.rewardToken.symbol}
+      </p>
+      {campaign.protocolApyBps !== null ? (
+        <p>Vault APR {formatBps(campaign.protocolApyBps)}</p>
+      ) : null}
+      <p>{endsIn(campaign)}</p>
+      <YourEarnings campaign={campaign} />
+    </aside>
+  );
+}
+
+function YourEarnings({ campaign }: { campaign: Campaign }) {
+  const position = campaign.userPosition;
+  if (!position || position.accumulatedRewards === 0n) return null;
+
+  const { decimals, symbol } = campaign.rewardToken;
+  return (
+    <p>
+      You've earned {formatToken(position.accumulatedRewards, decimals, symbol)}
+      {position.claimable > 0n
+        ? ` · ${formatToken(position.claimable, decimals, symbol)} ready to claim`
+        : null}
+    </p>
+  );
+}
+```
+
+Drop it next to your deposit form:
+
+```tsx
+<RewardBadge vault={{ chainId: 8453, address: "0xYourVault" }} />
+```
+
+Style it however your vault page looks. The markup is deliberately bare.
+
+## When It Hides
+
+The badge renders nothing rather than a misleading number. That covers four cases:
+
+- **No live campaign on the vault.** Before a campaign starts or after it ends, `campaigns.active` returns nothing for the target.
+- **`boostApyBps` is `null`.** It is `null` at zero TVL and briefly when the reward-token price feed lags. A live campaign showing `0.00%` reads as broken.
+- **The budget is spent.** An [open-ended campaign](/developers/concepts/campaigns#open-ended-campaigns) with `budgetExhausted: true` pays nothing until it is topped up.
+- **The campaign requires Forwarder deposits.** Discovery leaves those out by default, which is what you want: your own deposit form would not activate the position. See [Forwarder Deposits](/developers/guides/forwarder-deposits) if you do route through it.
+
+## Linking to Claims
+
+The badge says when rewards are ready but does not claim them. Point "ready to claim" at wherever your app claims: a [Claim Button](/developers/examples/claim-button) under the badge for a single campaign, or a [Rewards Panel](/developers/examples/rewards-panel) for everything the wallet has earned. Claims happen on the **reward chain**, which may not be the chain your vault is on.
+
+## Variations
+
+- **You were given a campaign ID.** Swap the query for `tbi.campaigns.get(id)` and drop the `select`. That call has no `userAddress`, so read the earnings line from `rewards.forUser` instead; the [Recipes](/developers/examples/recipes#per-campaign-earnings) page has that hook.
+- **Uniswap v4 pools.** Pools have no address to filter on. Fetch active campaigns on the chain and match `target.poolId` client-side; see [Find Your Campaign](/developers/guides/display-campaign-stats#find-your-campaign).
+- **A combined number.** If your design wants one headline APR, label it as an estimate ("~18% total") and keep the two lines underneath. The two APRs come from different sources and can each be `null` on their own.
+- **A status line.** "Ends in 3 days", "Rewards paused", or "Rewards ready to claim" as one string: see [Campaign Status Line](/developers/examples/recipes#campaign-status-line).
+
+## Keep Exploring
+
+<CardGroup cols={3}>
+  <Card title="Display Campaign Stats" href="/developers/guides/display-campaign-stats">
+    The fields behind the badge and the rules for showing them.
+  </Card>
+  <Card title="Claim Button" href="/developers/examples/claim-button">
+    What "ready to claim" should lead to.
+  </Card>
+  <Card title="Recipes" href="/developers/examples/recipes">
+    Smaller pieces: status lines, runway, per-campaign earnings.
+  </Card>
+</CardGroup>

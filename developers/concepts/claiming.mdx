@@ -7,7 +7,7 @@ Almost every claim-integration bug comes from one of three misunderstandings: wh
 
 ## From Accrual to Roots
 
-Rewards are computed off-chain by Boost's indexers and committed as **merkle roots** on the reward chain. Users claim against the TBI Manager with a proof the API hands out.
+Rewards are computed off-chain by Rabbithole's indexers and committed as **merkle roots** on the reward chain. Users claim against the TBI Manager with a proof the API hands out.
 
 Roots publish **periodically while the campaign runs**, not only at the end, so claims open during a campaign rather than after it. A proof with `publishedAt: null` means a tree exists but its root is not on-chain yet; nothing is claimable until it is.
 
@@ -94,7 +94,7 @@ A claim proof for a cliff campaign carries that state:
 </Warning>
 
 <Note>
-  Cliff fields are part of the API surface and are `null` on campaigns that do not use the mode. Confirm availability with the Boost team before designing a campaign around it.
+  Cliff fields are part of the API surface and are `null` on campaigns that do not use the mode. Confirm availability with the Rabbithole team before designing a campaign around it.
 </Note>
 
 ## Claim Windows
@@ -102,7 +102,7 @@ A claim proof for a cliff campaign carries that state:
 Claims do not stay open forever; the `ClaimExpired()` revert exists for exactly this. Standard campaigns allow **60 days** after the campaign ends, and the window is configurable per campaign. Once it closes, unclaimed rewards become recoverable by the campaign creator.
 
 <Note>
-  The claim deadline is not currently exposed as an API field. If your UI needs to show a countdown, ask the Boost team for the window on your specific campaign. See [Campaign Lifecycle](/campaigns/campaign-lifecycle) for the phase this belongs to.
+  The claim deadline is not currently exposed as an API field. If your UI needs to show a countdown, ask the Rabbithole team for the window on your specific campaign. See [Campaign Lifecycle](/campaigns/campaign-lifecycle) for the phase this belongs to.
 </Note>
 
 ## Keep Exploring

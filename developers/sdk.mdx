@@ -29,7 +29,7 @@ bun add @boostxyz/tbi-sdk viem
 ```
 </CodeGroup>
 
-The current version is `0.1.0`, published on [npm](https://www.npmjs.com/package/@boostxyz/tbi-sdk). Both ESM and CommonJS builds ship in the package.
+The current version is `0.3.0`, published on [npm](https://www.npmjs.com/package/@boostxyz/tbi-sdk). Both ESM and CommonJS builds ship in the package.
 
 ### Peer Dependencies
 
@@ -56,7 +56,7 @@ The client is frozen and immutable, so it is safe to share as a module-level sin
 | `baseUrl` | `string \ | URL` | `https://api-tbi.boost.xyz` | API origin. Trailing slashes are stripped |
 | `fetch` | `TbiFetch` | `globalThis.fetch` | Custom fetch implementation, required in runtimes without a global `fetch` |  |
 | `headers` | `HeadersInit` | none | Default headers merged into every request |  |
-| `refId` | `string` | none | Partner attribution ID assigned by Boost, sent as the `x-boost-ref-id` header |  |
+| `refId` | `string` | none | Partner attribution ID assigned by Rabbithole, sent as the `x-boost-ref-id` header |  |
 | `retry` | `TbiRetryConfig` | `{ attempts: 3, baseDelayMs: 200 }` | Backoff behaviour for transient failures |  |
 
 ```ts
@@ -68,7 +68,7 @@ const tbi = createTbiClient({
 
 ### Partner Attribution
 
-When `refId` is set, the SDK sends it on every API request so Boost can attribute SDK, API, and Forwarder usage to your integration. It is **not** authentication and not a secret; the API is public either way.
+When `refId` is set, the SDK sends it on every API request so Rabbithole can attribute SDK, API, and Forwarder usage to your integration. It is **not** authentication and not a secret; the API is public either way.
 
 The SDK validates the value locally: it must start with an alphanumeric character, contain only letters, numbers, `.`, `_`, `:`, or `-`, and be at most 128 characters. Override it per call when you want to split traffic:
 
@@ -97,9 +97,16 @@ See the [Developer Overview](/developers/overview) for how to get a `refId` regi
 | `claimAll(args)` | `TbiClaimAllResult` | Batches claims on one reward chain into a single Multicall3 transaction |
 | `encodeClaim(args)` | `TbiEncodedCall` | Raw `{ to, data, value }` calldata for a single claim, no wallet involved |
 | `encodeClaimAll(args)` | `TbiEncodedCall` | The same for a batch |
+| `referrals.bind(args, opts?)` | `ReferralBind` | Signs the EIP-712 bind with the referee's viem wallet and submits it |
+| `referrals.submitBind(submission, opts?)` | `ReferralBind` | Submits a bind signed outside viem |
+| `referrals.stats(address, query?, opts?)` | `readonly ReferralStatsEntry[]` | A referrer's per-campaign earnings, estimated or final |
+| `referrals.proof(id, address, opts?)` | `ReferralProof` | The one-shot payout proof and the campaign's distributor address |
+| `referrals.claim(args)` | `TbiClaimResult` | Submits the referral claim through the TBI Manager with a viem wallet |
+| `referrals.claim.simulate(args)` | `TbiClaimSimulationResult` | Dry-runs the referral claim via `eth_call` |
+| `referrals.encodeClaim(args)` | `TbiEncodedCall` | Raw `claimReferral` calldata, no wallet involved |
 | `transport.request(path, opts?)` | `T` | Escape hatch for `/v1` paths the SDK does not wrap yet |
 
-Every read method takes the same per-call options: `headers`, `refId`, and `signal`.
+Every read method takes the same per-call options: `headers`, `refId`, and `signal`. The referral methods are covered end to end in [Add Referrals](/developers/guides/referrals).
 
 ### The Transport Escape Hatch
 
@@ -122,10 +129,17 @@ tbi.transport.buildUrl("/v1/campaigns", { limit: 5 });
 | `TBI_REF_ID_HEADER` | `x-boost-ref-id` |
 | `TBI_MANAGER_ADDRESS` | The TBI Manager. The same address on every supported reward chain |
 | `MULTICALL3_ADDRESS` | The canonical Multicall3 deployment |
-| `TBI_MANAGER_ABI` | The `claim` function fragment |
+| `TBI_MANAGER_ABI` | The `claim` and `claimReferral` function fragments |
 | `MULTICALL3_ABI` | The `aggregate` function fragment |
+| `EMISSION_RATE_PRECISION` | `10n ** 12n`, the scale of an open-ended campaign's `emissionRate` |
+| `REFERRAL_BIND_DOMAIN_NAME` | `"Boost TBI Referrals"`, the EIP-712 domain name of the bind message |
+| `REFERRAL_BIND_DOMAIN_VERSION` | `"1"` |
+| `REFERRAL_BIND_TYPES` | The EIP-712 `ReferralBind` type: `referrer` (`address`), `deadline` (`uint256`) |
+| `REFERRAL_BIND_MAX_DEADLINE_SECONDS` | `3_600n`, the longest a bind signature may stay valid |
 
-See [Contracts](/developers/contracts) for the addresses, the claim signature, and the revert selectors.
+`referralBindTypedData({ referrer, deadline })` assembles those constants into the exact payload to sign when you sign outside viem.
+
+See [Contracts](/developers/contracts) for the addresses, the claim signatures, and the revert selectors.
 
 ## Use with wagmi and TanStack Query
 
@@ -136,7 +150,7 @@ import { useAccount, useWalletClient } from "wagmi";
 
 const tbi = createTbiClient();
 
-export function useBoostCampaignForVault(chainId: number, vault: Address) {
+export function useRabbitholeCampaignForVault(chainId: number, vault: Address) {
   return useQuery({
     queryKey: ["tbi", "campaigns", "active", chainId, vault],
     queryFn: () => tbi.campaigns.active({ target: { chainId, address: vault } }),
@@ -168,8 +182,19 @@ export function ClaimButton({ id }: { id: CampaignId }) {
 Every exported symbol ships with TSDoc, so your editor is the fastest per-field reference. The types are bundled with the package; there is nothing separate to install.
 
 <Note>
-  There is no public changelog page yet. The `/v1` API contract changes additively only; the SDK follows semantic versioning, and `0.1.0` is the only release so far.
+  There is no public changelog page yet. The `/v1` API contract changes additively only, and the SDK follows semantic versioning.
 </Note>
+
+## What Changed Since 0.1.0
+
+| Area | Added |
+| --- | --- |
+| Referrals | `client.referrals.*`: global binds, referrer stats, one-shot payout proofs and claims. See [Add Referrals](/developers/guides/referrals) |
+| Open-ended campaigns | `openEnded`, `emissionRate`, `fundingHistory` on `Campaign`, and the runway fields `fundedUntil`, `estimatedEndDate`, and `budgetExhausted` on `Campaign` and `CampaignStats`. See [Open-Ended Campaigns](/developers/concepts/campaigns#open-ended-campaigns) |
+| Campaign fields | `raffleTicketMultiplier`; the `earningCap` and `includeExistingPositions` modes; `Ledger` targets with `protocol`, `marketKey`, and `asset` |
+| Forwarder | The `midas-deposit-instant` and `erc7540-request-deposit` deposit action types. See [Forwarder Deposits](/developers/guides/forwarder-deposits) |
+
+Every addition is a new field, method, or union member. The one thing to check when upgrading: an exhaustive `switch` over `depositActionType` gains a new case, so give it a default branch. The union keeps growing as Forwarder targets are added.
 
 ## Keep Exploring
 

@@ -1,0 +1,96 @@
+---
+title: "How Referrals Work"
+description: "Global first-touch binds, estimated versus final earnings, and one-shot payouts from the ReferralDistributor"
+---
+
+A campaign can reserve a **referral pool** when it is created. Referrers then earn a share of what the users they referred (their referees) earn in that campaign, paid from that pool. This page covers the rules behind the `/v1/referrals` endpoints and `client.referrals.*`. For the step-by-step integration, see [Add Referrals](/developers/guides/referrals). For the business view (where the pool comes from and how it is sized), see [Referrals](/campaigns/referrals) in the Campaigns section.
+
+<Note>
+  Campaigns created without a referral pool have no referral surface. Binds still succeed, but they earn nothing in those campaigns, and `referrals.stats` never lists them.
+</Note>
+
+## The Referral Code
+
+**A referral code is the referrer's wallet address**, or their Rabbithole username. There is nothing to mint or register: a referral link just carries one of the two.
+
+- **Address.** Pass it straight to `referrals.bind`.
+- **Username.** Resolve it to the account's payout wallet first with `GET /v1/referrals/usernames/{username}`, then bind to the address that comes back. Users can re-point their payout wallet, so resolve when you bind rather than caching it. See [Accept a Username Link](/developers/guides/referrals#accept-a-username-link).
+
+Smart-wallet proxies (Polymarket-style Safes) are canonicalized to their owner EOA on the server. Stats, proofs, and payouts always use that owner address, which can differ from the address the link carried.
+
+## Binding
+
+The referee links to a referrer once by signing an EIP-712 message. The bind is **global**: it names no campaign and applies to every campaign on every chain. The signed domain carries no `chainId`, so the wallet can sign while connected to any network.
+
+| Rule | What happens |
+| --- | --- |
+| **First accepted bind wins** | Re-submitting the same referee and referrer is idempotent and returns `created: false`. A different referrer is rejected with `ALREADY_BOUND`, for every campaign, since there is only one bind |
+| **No retroactive credit, judged per campaign** | A bind earns the referrer a share of a campaign only if it comes before the referee's first position in that campaign. Binding never fails because the referee already participates somewhere; it just does not count in campaigns they joined first |
+| **Rabbithole-linked wallets only** | Both wallets must be linked to a Rabbithole account. An unlinked referee is rejected with `WALLET_NOT_LINKED`; an unlinked referrer with `REFERRER_NOT_LINKED` |
+| **No self-referrals** | A referrer that resolves to the referee, to one of the referee's own proxy wallets, or to any wallet ever linked to the referee's Rabbithole account is rejected with `SELF_REFERRAL` |
+| **No loops** | A bind whose referrer is already referred by the referee, directly (A refers B, then B refers A) or through a chain (A refers B, B refers C, then C refers A), is rejected with `CYCLIC_REFERRAL` |
+| **EOA signatures only** | Smart-wallet (EIP-1271) signatures are not accepted. Bad or expired signatures return `INVALID_SIGNATURE` |
+
+The per-campaign timing check runs when each campaign's final distribution is built. It allows **five minutes of grace** for a deposit that lands just before its bind, which covers the race between signing and the deposit confirming. It does not cover a referee who deposited hours ago.
+
+<Warning>
+  **Whoever owns the last step before the deposit owns the attribution.** Bind in your deposit flow, before the user signs the deposit transaction. A bind made after the referee has entered a campaign is stored, but it earns nothing in that campaign.
+</Warning>
+
+The signature carries a `deadline` in unix seconds. The SDK defaults it to ten minutes from now and rejects anything more than an hour out (`REFERRAL_BIND_MAX_DEADLINE_SECONDS`) before asking the wallet to sign.
+
+## Earnings
+
+A referrer earns **25% of what their referees earned** in a campaign, scaled into that campaign's referral pool. `referrals.stats(address)` returns one entry per referral campaign where at least one of the referrer's referees first deposited after binding.
+
+| Field | Meaning |
+| --- | --- |
+| `status` | `"estimated"` while the campaign is live; `"final"` once it has finalized and the payout is settled |
+| `refereeCount` | Referees bound to this referrer who count in this campaign |
+| `refereesEarned` | What those referees earned in total |
+| `uncappedAmount` | The 25% referral rate applied to `refereesEarned`, before the pool cap |
+| `amount` | The pool-capped payout. Projected while `"estimated"`, committed once `"final"` |
+| `referralPool` | The size of the pool every referrer in the campaign shares |
+| `claimWindowDuration` | Seconds the payout stays claimable, counted from when the referral root is published |
+| `claimWindowEnd` | When the window closes. `null` until the root is published |
+| `claimTxHash` / `claimedAt` | Filled in from the indexed claim event once the referrer has claimed. `null` before |
+| `rewardToken` | The token the payout is paid in, which is the campaign's reward token |
+
+All amounts are in `rewardToken` base units.
+
+**The pool is a hard cap.** When the sum of every referrer's `uncappedAmount` exceeds `referralPool`, every payout scales down pro rata to fit. That is why `amount` can be less than `uncappedAmount`, and why an `"estimated"` amount moves as other referrers' referees earn, not just your own.
+
+<Note>
+  `amount` is typed `bigint | null`. Current servers always set it; `null` only appears in payloads from servers that predate the live projection. Treat `null` as "no estimate" rather than zero.
+</Note>
+
+## Claiming Payouts
+
+Referral payouts are a separate flow from reward claims. `tbi.claim` and `tbi.claimAll` do not apply.
+
+1. Each referral campaign deploys its own **ReferralDistributor** contract on the reward chain, which holds the pool.
+2. After the campaign finalizes, Rabbithole builds the referral merkle tree and publishes its root to the distributor. That publication starts the claim window.
+3. `referrals.proof(id, referrer)` returns the proof, the payout amount, and the distributor's address. It throws `TbiNotFoundError` until the distribution exists, which is the normal state for any campaign that is still running.
+4. The claim is submitted to the TBI Manager's `claimReferral`, which forwards it to the distributor. The distributor only accepts calls from the Manager, so calling it directly reverts.
+
+Three differences from reward claims matter in a UI:
+
+- **One-shot.** The proof's `amount` is the full payout, claimed exactly once per campaign. It is not a cumulative total that grows over time.
+- **Claim window.** Once the window closes, the unclaimed pool is swept back to the protocol and the payout is gone. Surface referral claims prominently and show `claimWindowEnd`.
+- **Permissionless submission.** Anyone can submit the transaction; the payout always goes to the referrer named in the proof, so relayers work without special support.
+
+`claimTxHash` and `claimedAt` lag the chain by the indexer's confirmation delay. To decide whether a claim button should be enabled right after a claim, read `claimed(referrer)` on the distributor instead. See [Contracts](/developers/contracts#referral-claims).
+
+## Keep Exploring
+
+<CardGroup cols={3}>
+  <Card title="Add Referrals" href="/developers/guides/referrals">
+    Bind from a link, show earnings, and claim the payout.
+  </Card>
+  <Card title="Referrals for Protocols" href="/campaigns/referrals">
+    How the pool is funded and sized at campaign creation.
+  </Card>
+  <Card title="Contracts" href="/developers/contracts#referral-claims">
+    `claimReferral`, the distributor, and its revert selectors.
+  </Card>
+</CardGroup>

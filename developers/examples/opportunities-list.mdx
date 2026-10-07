@@ -16,7 +16,7 @@ This page assumes the client and helpers from [Project Setup](/developers/exampl
 | Protocol APR | `protocolApyBps` | What the vault or pool pays on its own. Often `null` |
 | TVL | `tvl` | USD with 6 decimals |
 | Rewards | `rewardToken.symbol` | What participants earn |
-| Ends | `endTime` | Unix seconds as a `bigint` |
+| Ends | `estimatedEndDate`, falling back to `endTime` | The projected end. For [open-ended campaigns](/developers/concepts/campaigns#open-ended-campaigns) `endTime` is only a ceiling |
 
 ## The Component
 
@@ -72,7 +72,7 @@ function OpportunityRow({ campaign }: { campaign: Campaign }) {
       <td>{formatBps(campaign.protocolApyBps) ?? "—"}</td>
       <td>{formatUsd(campaign.tvl)}</td>
       <td>{campaign.rewardToken.symbol}</td>
-      <td>{endsIn(campaign.endTime)}</td>
+      <td>{endsIn(campaign)}</td>
     </tr>
   );
 }
@@ -102,7 +102,7 @@ export function useVaultCampaigns(chainId: number, address: `0x${string}`) {
 }
 ```
 
-Then render one row per vault, or a single "Earn 15.50% extra" badge when the list is non-empty. For a Uniswap v4 pool, match on `target.poolId` client-side; see [Find Your Campaign](/developers/guides/display-campaign-stats#find-your-campaign).
+Then render one row per vault, or a single badge when the list is non-empty; the [Reward Badge](/developers/examples/reward-badge) is that component. For a Uniswap v4 pool, match on `target.poolId` client-side; see [Find Your Campaign](/developers/guides/display-campaign-stats#find-your-campaign).
 
 ## Server Components
 
@@ -123,7 +123,7 @@ export default async function OpportunitiesPage() {
     rewardApr: formatBps(campaign.boostApyBps) ?? "—",
     tvl: formatUsd(campaign.tvl),
     token: campaign.rewardToken.symbol,
-    ends: endsIn(campaign.endTime),
+    ends: endsIn(campaign),
   }));
 
   return (
@@ -155,7 +155,7 @@ export default async function OpportunitiesPage() {
 - **Never render a null APR as `0.00%`.** A live campaign showing zero reads as broken. Show a dash or hide the cell.
 - **Never sum the two APRs silently.** They measure different things and can each be `null` on their own. Two lines, or one total that is labelled as an estimate.
 - **`participants` is not a live holder count.** A wallet that entered and later withdrew stays counted. Use it for social proof, not for "currently earning".
-- **Forwarder-only campaigns are hidden by default.** If your deposit flow uses the [Deposit Button](/developers/examples/deposit-button), pass `includeForwarderRequired: true` so those campaigns appear.
+- **Forwarder-only campaigns are hidden by default.** If you route deposits through the Forwarder (see [Forwarder Deposits](/developers/guides/forwarder-deposits)), pass `includeForwarderRequired: true` so those campaigns appear.
 
 ## Keep Exploring
 

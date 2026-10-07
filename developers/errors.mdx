@@ -50,6 +50,27 @@ try {
 
 If you are checking many campaigns at once, `claims.statuses` avoids the problem entirely: campaigns without a published root report `claimable: 0n` instead of erroring.
 
+The same applies to `referrals.proof`: it 404s until the campaign has finalized and its referral root is published, which is the normal state for every live campaign.
+
+## Referral Bind Codes
+
+`POST /v1/referrals/bind` (`tbi.referrals.bind` and `submitBind`) has its own rejection codes. The SDK raises them as `TbiApiError`, so branch on `error.code`.
+
+| Status | `code` | What it means | What to do |
+| --- | --- | --- | --- |
+| 400 | `SELF_REFERRAL` | The referrer is the referee, one of the referee's proxy wallets, or a wallet of the referee's own Rabbithole account | Continue without a referrer |
+| 401 | `INVALID_SIGNATURE` | The signature is malformed, expired, not from the referee, or from a smart wallet (EIP-1271 is not supported) | Re-sign with a fresh deadline from an EOA |
+| 403 | `WALLET_NOT_LINKED` | The referee's wallet is not linked to a Rabbithole account | Ask the user to link the wallet, then bind again |
+| 409 | `ALREADY_BOUND` | The referee is already bound to a different referrer. Binds are global and permanent | Continue; the existing bind stands |
+| 409 | `REFERRER_NOT_LINKED` | The referrer's wallet (after proxy canonicalization) is not linked to a Rabbithole account | Continue without a referrer; the link is not usable |
+| 409 | `CYCLIC_REFERRAL` | The referrer is already referred by the referee, directly or through a chain of binds | Continue without a referrer |
+
+Re-submitting the exact same bind is **not** an error: it resolves with `created: false`. None of these codes should block a deposit. See [Add Referrals](/developers/guides/referrals#handle-rejections) for a worked handler.
+
+<Note>
+  The error-code set grows additively. Two more bind codes exist that the SDK never triggers: `REFERRER_NOT_FOUND` (404) when a raw REST bind sends a `referrerUsername` no account has claimed, and `INVALID_SESSION` (401) for Rabbithole's own session-authenticated binds. Treat any code you do not recognise as a generic error.
+</Note>
+
 ## SDK Error Classes
 
 All SDK errors extend `TbiError` and carry a `code`.
@@ -57,8 +78,8 @@ All SDK errors extend `TbiError` and carry a `code`.
 | Class | Raised when | Extends |
 | --- | --- | --- |
 | `TbiError` | Base class, never thrown directly | `Error` |
-| `TbiApiError` | Any non-2xx API response not covered below | `TbiError` |
-| `TbiNotFoundError` | HTTP 404, campaign or claim proof not found | `TbiApiError` |
+| `TbiApiError` | Any non-2xx API response not covered below, including referral bind rejections | `TbiError` |
+| `TbiNotFoundError` | HTTP 404: campaign, claim proof, or referral proof not found | `TbiApiError` |
 | `TbiValidationError` | HTTP 400, the API rejected a parameter | `TbiApiError` |
 | `TbiNetworkError` | `fetch` failed or the response body would not parse as JSON | `TbiError` |
 | `TbiClaimError` | SDK-side claim validation: wrong wallet chain, proof/campaign mismatch, nothing claimable, or a batch spanning multiple reward chains | `TbiError` |
@@ -107,7 +128,9 @@ const campaign = await tbi.campaigns.get(id, { signal: controller.signal });
 
 Once a claim transaction is submitted, failures come from the TBI Manager contract rather than the API.
 
-[📜Revert selectors`InvalidProof`, `NothingToClaim`, `ClaimExpired`, and the rest, with the cause of each.](/developers/contracts)
+<Card title="Revert Selectors" icon="scroll" href="/developers/contracts#revert-selectors">
+  `InvalidProof`, `NothingToClaim`, `ClaimExpired`, the referral claim errors, and the cause of each.
+</Card>
 
 ## Keep Exploring
 

@@ -100,10 +100,11 @@
             "group": "Examples",
             "pages": [
               "developers/examples/setup",
+              "developers/examples/reward-badge",
               "developers/examples/opportunities-list",
               "developers/examples/rewards-panel",
               "developers/examples/claim-button",
-              "developers/examples/deposit-button"
+              "developers/examples/recipes"
             ]
           },
           {
@@ -111,7 +112,8 @@
             "pages": [
               "developers/concepts/campaigns",
               "developers/concepts/claiming",
-              "developers/concepts/data-conventions"
+              "developers/concepts/data-conventions",
+              "developers/concepts/referrals"
             ]
           },
           {
@@ -120,7 +122,8 @@
               "developers/guides/display-campaign-stats",
               "developers/guides/show-user-rewards",
               "developers/guides/claim-rewards",
-              "developers/guides/forwarder-deposits"
+              "developers/guides/forwarder-deposits",
+              "developers/guides/referrals"
             ]
           },
           {
@@ -188,5 +191,11 @@
       "discord": "https://discord.gg/JTCqaekdm",
       "github": "https://github.com/boostxyz"
     }
-  }
+  },
+  "redirects": [
+    {
+      "source": "/developers/examples/deposit-button",
+      "destination": "/developers/guides/forwarder-deposits#full-react-component"
+    }
+  ]
 }

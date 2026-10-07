@@ -1,0 +1,259 @@
+---
+title: "Add Referrals"
+description: "Bind referees from a referral link, show a referrer's earnings, and claim the one-shot payout"
+---
+
+This guide wires referrals into your product: capture the code from a link, bind the referee before their first deposit, show referrers what they have earned, and let them claim. The rules behind each step (global binds, the pool cap, the claim window) are in [How Referrals Work](/developers/concepts/referrals).
+
+<Note>
+  Referrals need SDK `0.3.0` or later. Both the referee and the referrer must have wallets linked to a Rabbithole account; binds between unlinked wallets are rejected.
+</Note>
+
+## The Flow
+
+1. **Capture** the referral code from the link: a wallet address or a Rabbithole username.
+2. **Bind** the referee with a signed message, before they sign their first deposit.
+3. **Show** the referrer their per-campaign earnings.
+4. **Claim** each payout once its campaign has finalized, before the claim window closes.
+
+## Capture the Code
+
+A referral link carries the referrer's address or their Rabbithole username. Neither is a secret, and there is nothing to register. Read it however your routing works, and keep it until the user deposits:
+
+```ts
+// https://your.app/vaults/usdc?ref=0x1234…  or  ?ref=alice
+const code = new URLSearchParams(window.location.search).get("ref");
+```
+
+### Accept a Username Link
+
+The SDK's bind takes an address, because the referee signs over the address. When the link carries a username, resolve it to the account's payout wallet with the transport escape hatch first:
+
+<CodeGroup>
+```bash title="curl"
+curl https://api-tbi.boost.xyz/v1/referrals/usernames/alice
+# { "username": "alice", "referrer": "0x1234…" }
+```
+
+```ts title="TypeScript"
+import { type Address, TbiNotFoundError } from "@boostxyz/tbi-sdk";
+import { isAddress } from "viem";
+
+async function resolveReferrer(code: string): Promise<Address | null> {
+  if (isAddress(code)) return code;
+
+  try {
+    const { referrer } = await tbi.transport.request<{ username: string; referrer: Address }>(
+      `/v1/referrals/usernames/${encodeURIComponent(code.trim().toLowerCase())}`,
+    );
+    return referrer;
+  } catch (e) {
+    if (e instanceof TbiNotFoundError) return null; // no account has claimed that username
+    throw e;
+  }
+}
+```
+</CodeGroup>
+
+Usernames are 3 to 20 lowercase letters, digits, or underscores, and never change. The payout wallet behind a username can be re-pointed, though, so resolve at bind time rather than caching the address.
+
+## Bind Before the Deposit
+
+The referee's wallet signs an EIP-712 message and the SDK submits it. The wallet can be on any network: the message has no `chainId`, because a bind applies to every campaign on every chain.
+
+<CodeGroup>
+```ts title="SDK"
+const bind = await tbi.referrals.bind({
+  walletClient, // the referee's wallet
+  referrer,     // from resolveReferrer()
+});
+
+bind.created; // true on the first bind, false when this exact bind already existed
+bind.referrer; // the stored referrer, canonicalized to the owner EOA
+```
+
+```bash title="curl"
+curl -X POST https://api-tbi.boost.xyz/v1/referrals/bind \
+  -H "content-type: application/json" \
+  -d '{
+    "referee": "0xREFEREE",
+    "referrer": "0xREFERRER",
+    "deadline": "1791417600",
+    "signature": "0x…"
+  }'
+```
+</CodeGroup>
+
+**Where to call it.** Put the bind in your deposit flow, right before the user signs the deposit transaction. A bind made after the referee has entered a campaign is stored, but earns the referrer nothing in that campaign. The server allows five minutes of grace for a deposit that lands just before its bind, and no more.
+
+<Tip>
+  Binding is one extra signature, and it is free: no gas, no transaction. If you only want to ask once, skip the prompt for wallets you have already bound. A repeat bind to the same referrer is harmless and returns `created: false`.
+</Tip>
+
+### Handle Rejections
+
+Rejections are `TbiApiError`s with a machine-readable `code`. None of them should block the deposit itself; the user can still deposit, they just will not be attributed.
+
+```ts
+import { TbiApiError } from "@boostxyz/tbi-sdk";
+
+try {
+  await tbi.referrals.bind({ walletClient, referrer });
+} catch (e) {
+  if (!(e instanceof TbiApiError)) throw e;
+
+  switch (e.code) {
+    case "ALREADY_BOUND":       // this wallet already has a different referrer, permanently
+    case "SELF_REFERRAL":       // the link belongs to the user's own Rabbithole account
+    case "CYCLIC_REFERRAL":     // the referrer is already referred by this user
+      break;                    // carry on with the deposit, unattributed
+    case "WALLET_NOT_LINKED":   // the user needs to link this wallet to Rabbithole first
+    case "REFERRER_NOT_LINKED": // the link points at a wallet with no Rabbithole account
+    case "INVALID_SIGNATURE":   // bad or expired signature; safe to retry with a fresh one
+      break;
+    default:
+      throw e;
+  }
+}
+```
+
+Two failures happen in the SDK before the wallet is asked to sign: a `walletClient` with no account, and a `deadline` that is already past or more than an hour away. The default deadline is ten minutes from now, so you only hit the second one if you pass your own.
+
+<Warning>
+  Only EOA signatures are accepted. A smart-contract wallet that signs through EIP-1271 cannot bind today, so check for that case before you prompt for a signature you know will be rejected.
+</Warning>
+
+### Signing Outside viem
+
+Build the exact payload with `referralBindTypedData`, sign it with the referee's EOA through your own stack, and submit the signed fields with `submitBind`:
+
+```ts
+import { referralBindTypedData } from "@boostxyz/tbi-sdk";
+
+const deadline = BigInt(Math.floor(Date.now() / 1000) + 600);
+const typedData = referralBindTypedData({ referrer, deadline });
+
+// ethers v6: signer.signTypedData(domain, types, message)
+const signature = await signer.signTypedData(typedData.domain, typedData.types, typedData.message);
+
+await tbi.referrals.submitBind({ referee, referrer, deadline, signature });
+```
+
+The domain is `{ name: "Boost TBI Referrals", version: "1" }` with no `chainId`, and the message type is `ReferralBind { address referrer; uint256 deadline }`. Sign `referrer` exactly as you submit it. Over raw REST, `deadline` travels as a decimal string.
+
+## Show Earnings
+
+`referrals.stats` returns one entry per campaign where the referrer has counted referees:
+
+<CodeGroup>
+```bash title="curl"
+curl https://api-tbi.boost.xyz/v1/referrals/stats/0xREFERRER
+```
+
+```ts title="TypeScript"
+import { formatUnits } from "viem";
+
+const entries = await tbi.referrals.stats(referrer);
+
+for (const e of entries) {
+  const amount = e.amount === null ? "—" : formatUnits(e.amount, e.rewardToken.decimals);
+  console.log(
+    `${e.id.chainId}:${e.id.campaignIndex}`,
+    e.status,               // "estimated" or "final"
+    `${e.refereeCount} referees`,
+    `${amount} ${e.rewardToken.symbol}`,
+  );
+}
+```
+</CodeGroup>
+
+Pass `{ chainId }` as the second argument to limit the list to one reward chain.
+
+How to present the two states:
+
+- **`"estimated"`**: the campaign is live. Label the number as an estimate. It moves with your referees' earnings and with every other referrer's, because all of them share one pool.
+- **`"final"`**: the payout is settled. Once `claimWindowEnd` is set, the payout is claimable until then. Show the deadline next to the button.
+
+`claimTxHash` and `claimedAt` mark a payout as claimed, but they trail the chain by the indexer's confirmation delay. Use them for history, not to gate the button.
+
+## Claim the Payout
+
+Referral payouts have their own claim flow. `tbi.claim` and `tbi.claimAll` do not apply.
+
+### Fetch the Proof
+
+```ts
+import { TbiNotFoundError } from "@boostxyz/tbi-sdk";
+
+let proof = null;
+try {
+  proof = await tbi.referrals.proof(id, referrer);
+} catch (e) {
+  if (!(e instanceof TbiNotFoundError)) throw e;
+  // Normal until the campaign finalizes and the referral root is published.
+}
+```
+
+What comes back:
+
+```ts
+{
+  id: { chainId: 8453, campaignIndex: 101 },
+  referrer: "0x1234…",
+  amount: 4250000n,            // the full one-shot payout, not a cumulative total
+  proof: ["0x8f1c…", "…"],
+  root: "0x3b7a…",
+  publishedAt: new Date("2026-10-01T18:00:00.000Z"),
+  distributorAddress: "0x9e0d…", // read claim state here; never send claims here
+  rewardToken: { address: "0x8335…", decimals: 6, symbol: "USDC" },
+}
+```
+
+### Gate, Simulate, Submit
+
+```ts
+const canClaim =
+  proof !== null &&
+  proof.publishedAt !== null &&
+  proof.amount > 0n &&
+  walletClient.chain?.id === id.chainId; // the reward chain
+
+const sim = await tbi.referrals.claim.simulate({ walletClient, id, referrer, proof });
+if (!sim.willSucceed) {
+  console.error(sim.revertReason); // e.g. already claimed, or the window has closed
+  return;
+}
+
+const { hash } = await tbi.referrals.claim({ walletClient, id, referrer, proof });
+```
+
+The SDK throws `TbiClaimError` before submitting when the wallet is on the wrong chain, the proof does not match the campaign or referrer, the root is not published yet, or the payout is zero. `simulate` reports those last two as `willSucceed: false` instead of throwing.
+
+Claiming is permissionless: any wallet can submit, and the tokens always go to the `referrer` in the proof. That makes relayer-sponsored claims work out of the box.
+
+### Non-viem Stacks
+
+```ts
+const { to, data, value } = tbi.referrals.encodeClaim({ proof });
+await signer.sendTransaction({ to, data, value });
+```
+
+`to` is the TBI Manager, not the distributor. The distributor only accepts calls from the Manager.
+
+### After the Claim
+
+As with reward claims, do not re-read the API to decide whether the claim went through. Mark the payout claimed once you have a receipt, or read `claimed(referrer)` on `proof.distributorAddress` for the authoritative answer. See [Referral Claims](/developers/contracts#referral-claims).
+
+## Keep Exploring
+
+<CardGroup cols={3}>
+  <Card title="How Referrals Work" href="/developers/concepts/referrals">
+    Binding rules, the pool cap, and the claim window.
+  </Card>
+  <Card title="Errors" href="/developers/errors#referral-bind-codes">
+    Every bind rejection code and what it means.
+  </Card>
+  <Card title="Contracts" href="/developers/contracts#referral-claims">
+    `claimReferral` and the distributor's revert selectors.
+  </Card>
+</CardGroup>
