@@ -7,10 +7,6 @@ Each item was a purple review flag in the preview site. Resolve before publishin
 
 - OQ-16: tier breakpoints and rates below are a proposal, not signed off. See OPEN-QUESTIONS.md for the constraints that apply before this page ships.
 
-## campaigns/referrals.mdx
-
-- OQ-17: the referral endpoints exist on internal surfaces but are NOT on the public /v1 API. Verified 2026-09-01: /v1/referrals/* returns a bare 404 rather than the JSON error envelope, and the OpenAPI spec contains no referral paths. Confirm the intended public surface and timeline before documenting endpoints.
-
 ## developers/concepts/claiming.mdx
 
 - OQ-6: confirm whether userPosition.claimable and rewards.forUser().claimable still disagree with claims.get(), or whether that is now fixed.
