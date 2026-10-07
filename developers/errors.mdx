@@ -107,7 +107,9 @@ const campaign = await tbi.campaigns.get(id, { signal: controller.signal });
 
 Once a claim transaction is submitted, failures come from the TBI Manager contract rather than the API.
 
-[📜Revert selectors`InvalidProof`, `NothingToClaim`, `ClaimExpired`, and the rest, with the cause of each.](/developers/contracts)
+<Card title="Revert Selectors" icon="scroll" href="/developers/contracts#revert-selectors">
+  `InvalidProof`, `NothingToClaim`, `ClaimExpired`, the referral claim errors, and the cause of each.
+</Card>
 
 ## Keep Exploring
 
