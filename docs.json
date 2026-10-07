@@ -100,10 +100,11 @@
             "group": "Examples",
             "pages": [
               "developers/examples/setup",
+              "developers/examples/reward-badge",
               "developers/examples/opportunities-list",
               "developers/examples/rewards-panel",
               "developers/examples/claim-button",
-              "developers/examples/deposit-button"
+              "developers/examples/recipes"
             ]
           },
           {
@@ -188,5 +189,11 @@
       "discord": "https://discord.gg/JTCqaekdm",
       "github": "https://github.com/boostxyz"
     }
-  }
+  },
+  "redirects": [
+    {
+      "source": "/developers/examples/deposit-button",
+      "destination": "/developers/guides/forwarder-deposits#full-react-component"
+    }
+  ]
 }
