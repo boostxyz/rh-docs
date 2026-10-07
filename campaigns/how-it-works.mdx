@@ -25,7 +25,7 @@ Bigger positions earn faster. Smaller positions still earn, just at a smaller sh
     Pick the on-chain position the campaign should reward — a token, vault share, LP position, or another supported asset.
   </Step>
 
-  <Step title="Boost turns the goal into a campaign">
+  <Step title="Rabbithole turns the goal into a campaign">
     Set the eligibility, reward token, budget, schedule, and any [modes](/campaigns/campaign-modes). Once funded, the campaign goes live at its scheduled start time.
   </Step>
 
@@ -34,7 +34,7 @@ Bigger positions earn faster. Smaller positions still earn, just at a smaller sh
   </Step>
 
   <Step title="Rewards become claimable">
-    Boost rolls accrued earnings into periodic on-chain snapshots. Users claim cumulative rewards whenever they're ready — partial, in full, now, or at the end.
+    Rabbithole rolls accrued earnings into periodic on-chain snapshots. Users claim cumulative rewards whenever they're ready — partial, in full, now, or at the end.
   </Step>
 </Steps>
 
@@ -58,9 +58,9 @@ Protocols set the shape of the campaign — what users are doing, who counts, an
 
 Once the campaign is live, the configuration is committed. Reward math runs on the rules set at launch.
 
-### What Boost handles
+### What Rabbithole handles
 
-Boost runs the operational layer end to end:
+Rabbithole runs the operational layer end to end:
 
 - Indexes the relevant on-chain events.
 - Calculates each user's earnings continuously.
@@ -84,7 +84,7 @@ Apps integrating with TBI can surface the same loop directly in their own produc
 
 Two pots of money live separately during a campaign.
 
-**User principal** stays in the protocol or vault where the position lives. Boost does not custody user deposits or move user principal into a Boost-controlled pool. Users stake, deposit, or hold exactly the way they would without a campaign attached.
+**User principal** stays in the protocol or vault where the position lives. Rabbithole does not custody user deposits or move user principal into a Rabbithole-controlled pool. Users stake, deposit, or hold exactly the way they would without a campaign attached.
 
 **Reward funds** live in campaign smart contracts deployed at launch. Reward tokens sit there and pay out to users as they claim earned rewards.
 
@@ -122,6 +122,6 @@ The mechanics above describe the default flow. Most campaigns layer additional r
   </Card>
 
   <Card title="Launch a Campaign" icon="rocket" href="/campaigns/launch-a-campaign">
-    What it looks like to bring a campaign live with the Boost team today.
+    What it looks like to bring a campaign live with the Rabbithole team today.
   </Card>
 </CardGroup>

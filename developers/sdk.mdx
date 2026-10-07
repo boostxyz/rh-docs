@@ -56,7 +56,7 @@ The client is frozen and immutable, so it is safe to share as a module-level sin
 | `baseUrl` | `string \ | URL` | `https://api-tbi.boost.xyz` | API origin. Trailing slashes are stripped |
 | `fetch` | `TbiFetch` | `globalThis.fetch` | Custom fetch implementation, required in runtimes without a global `fetch` |  |
 | `headers` | `HeadersInit` | none | Default headers merged into every request |  |
-| `refId` | `string` | none | Partner attribution ID assigned by Boost, sent as the `x-boost-ref-id` header |  |
+| `refId` | `string` | none | Partner attribution ID assigned by Rabbithole, sent as the `x-boost-ref-id` header |  |
 | `retry` | `TbiRetryConfig` | `{ attempts: 3, baseDelayMs: 200 }` | Backoff behaviour for transient failures |  |
 
 ```ts
@@ -68,7 +68,7 @@ const tbi = createTbiClient({
 
 ### Partner Attribution
 
-When `refId` is set, the SDK sends it on every API request so Boost can attribute SDK, API, and Forwarder usage to your integration. It is **not** authentication and not a secret; the API is public either way.
+When `refId` is set, the SDK sends it on every API request so Rabbithole can attribute SDK, API, and Forwarder usage to your integration. It is **not** authentication and not a secret; the API is public either way.
 
 The SDK validates the value locally: it must start with an alphanumeric character, contain only letters, numbers, `.`, `_`, `:`, or `-`, and be at most 128 characters. Override it per call when you want to split traffic:
 
@@ -136,7 +136,7 @@ import { useAccount, useWalletClient } from "wagmi";
 
 const tbi = createTbiClient();
 
-export function useBoostCampaignForVault(chainId: number, vault: Address) {
+export function useRabbitholeCampaignForVault(chainId: number, vault: Address) {
   return useQuery({
     queryKey: ["tbi", "campaigns", "active", chainId, vault],
     queryFn: () => tbi.campaigns.active({ target: { chainId, address: vault } }),

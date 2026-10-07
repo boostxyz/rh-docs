@@ -16,7 +16,7 @@ This is the Mintlify documentation site for Rabbithole (app.rabbithole.gg) and t
 - The product is **Rabbithole**. The reward mechanism is a **campaign**. Use "campaign" in user- and protocol-facing pages.
 - **Time-Based Incentives (TBI)** is the internal and SDK name. Mention it once in the Campaigns introduction and use it freely in developer pages where it matches the SDK, API, and contract names (`@boostxyz/tbi-sdk`, `api-tbi.boost.xyz`, TBI Manager).
 - **Hold to Earn** is the in-app name for the campaign list.
-- **Boost** is the company that operates the platform. "The team" or "the Rabbithole team" is fine in prose; Boost stays in contract, SDK, and API names.
+- **Do not use "Boost" in prose.** Say Rabbithole, "the Rabbithole team", or "the team". Boost only appears inside identifiers that would break if renamed: `@boostxyz/tbi-sdk`, `api-tbi.boost.xyz`, `boostApyBps`, the `x-boost-ref-id` header, the signed `"Boost TBI Referrals"` EIP-712 domain, and external `boost.xyz` URLs. The Forwarder contract is "the Rabbithole Forwarder".
 - Tiers are Bronze, Silver, Gold, Platinum, Diamond. Raffle **entries**, not tickets, in prose.
 - Support and contact go through Discord (`https://discord.gg/JTCqaekdm`), not email.
 

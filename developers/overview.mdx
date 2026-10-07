@@ -5,10 +5,10 @@ description: "Integrate a live campaign into your own product: campaign data, us
 
 Rabbithole campaigns expose a public REST API and a TypeScript SDK for building campaign experiences inside your own product. Show a live reward APR next to your pool, surface what a user has earned, and let them claim without ever leaving your app.
 
-This is a **read and claim** surface. It never takes custody of funds and never mutates Boost state server-side. Claims and deposits are transactions your users sign.
+This is a **read and claim** surface. It never takes custody of funds, and the only server-side write is a referral bind, which the user signs. Claims and deposits are transactions your users sign.
 
 <Note>
-  Campaigns are not self-serve today. The Boost team scopes, integrates, and deploys each one (see [Launch a Campaign](/campaigns/launch-a-campaign)). These pages are for integrating a campaign that already exists.
+  Campaigns are not self-serve today. The Rabbithole team scopes, integrates, and deploys each one (see [Launch a Campaign](/campaigns/launch-a-campaign)). These pages are for integrating a campaign that already exists.
 </Note>
 
 Campaign already live? Go straight to the [Quickstart](/developers/quickstart).
@@ -18,11 +18,11 @@ Campaign already live? Go straight to the [Quickstart](/developers/quickstart).
 There is less to arrange than you might expect.
 
 1. **A live campaign.** Rewards have to be running against a vault, pool, or token before there is anything to display. Start that conversation with the team on [Discord](https://discord.gg/JTCqaekdm).
-2. **A partner `refId`.** An attribution ID that Boost assigns manually. The SDK sends it as the `x-boost-ref-id` header on every request so campaign usage can be credited to your integration. It is **not** authentication and not a secret.
+2. **A partner `refId`.** An attribution ID that Rabbithole assigns manually. The SDK sends it as the `x-boost-ref-id` header on every request so campaign usage can be credited to your integration. It is **not** authentication and not a secret.
 3. **Nothing else.** There is no API key, no signup, and no signed request. Every endpoint in these docs is public.
 
 <Note>
-  Ask for a `refId` in your shared partner channel with the Boost team, or on [Discord](https://discord.gg/JTCqaekdm), before you ship. Everything works without one; you just lose the attribution.
+  Ask for a `refId` in your shared partner channel with the Rabbithole team, or on [Discord](https://discord.gg/JTCqaekdm), before you ship. Everything works without one; you just lose the attribution.
 </Note>
 
 ## What You Can Build

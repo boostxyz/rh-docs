@@ -50,7 +50,7 @@ Commit to campaigns distributing at least **$500k** in total incentives, pay the
 
 ## Distribution and the Raffle
 
-Campaigns running on Boost can be surfaced on [rabbithole.gg](https://rabbithole.gg), where users browse live earning opportunities. **There is no placement fee.** Being listed, appearing in the activity feed, and feeding into the monthly raffle all cost nothing on top of your campaign fee.
+Campaigns can be surfaced on [rabbithole.gg](https://rabbithole.gg), where users browse live earning opportunities. **There is no placement fee.** Being listed, appearing in the activity feed, and feeding into the monthly raffle all cost nothing on top of your campaign fee.
 
 What that adds for you is a second incentive layer your budget does not pay for:
 
@@ -59,7 +59,7 @@ What that adds for you is a second incentive layer your budget does not pay for:
 - **The monthly raffle.** Users who claim rewards climb a leaderboard and earn raffle entries toward three fixed monthly prizes: 3,000 USDC, 1,500 USDC, and 500 USDC. Someone earning in your campaign is also earning raffle entries, so the reason to deposit is larger than your APY alone.
 
 <Note>
-  The raffle prizes are funded by Boost out of the protocol fee, not from your campaign budget. Your participants get the extra pull at no cost to your program, and your reward budget pays out exactly as configured.
+  The raffle prizes are funded by Rabbithole out of the protocol fee, not from your campaign budget. Your participants get the extra pull at no cost to your program, and your reward budget pays out exactly as configured.
 </Note>
 
 <Warning>
@@ -70,7 +70,7 @@ What that adds for you is a second incentive layer your budget does not pay for:
 
 Nothing. Earning and claiming are free for participants.
 
-A user pays their own gas to claim, and nothing else. Boost takes no cut of a user's rewards, charges no claim fee, and never has custody of a user's principal, which stays in the underlying protocol or vault throughout. See [How It Works](/campaigns/how-it-works).
+A user pays their own gas to claim, and nothing else. Rabbithole takes no cut of a user's rewards, charges no claim fee, and never has custody of a user's principal, which stays in the underlying protocol or vault throughout. See [How It Works](/campaigns/how-it-works).
 
 <Note>
   If you want to remove even the gas cost, you can submit claims on your users' behalf through your own relayer. The claim function pays the user regardless of who sends the transaction. See [Sponsor gas](/developers/guides/claim-rewards#sponsor-gas).
@@ -97,7 +97,7 @@ If you need a specific amount to reach users, size the deposit for it: to distri
 
 ### Fees Do Not Rescale Your Campaign
 
-The fee comes out of the budget, but it **does not change the campaign parameters you configured**. Boost tries to sustain the rate you set using the post-fee budget; it does not raise your target to compensate.
+The fee comes out of the budget, but it **does not change the campaign parameters you configured**. Rabbithole tries to sustain the rate you set using the post-fee budget; it does not raise your target to compensate.
 
 <Warning>
   **Fixed APY campaigns end early when the budget drains.** If you configure a 12% Fixed APY campaign and fund 100,000 USDC, the engine is working with 90,000 USDC. If that cannot sustain 12% for the full schedule, the campaign ends when the budget runs out rather than paying a lower rate. Size the deposit against the distribution you actually want, not the headline number. See [Campaign Modes](/campaigns/campaign-modes).
