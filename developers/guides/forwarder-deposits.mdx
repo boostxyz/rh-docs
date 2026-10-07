@@ -65,18 +65,24 @@ A target looks like this:
 | Field | Meaning |
 | --- | --- |
 | `targetAddress` | The vault or market being deposited into |
-| `forwarderAddress` | The Boost Forwarder. Deployed via `CREATE2`, so it is the same address on every chain |
+| `forwarderAddress` | The Rabbithole Forwarder. Deployed via `CREATE2`, so it is the same address on every chain |
 | `acceptedToken` | The default input asset |
 | `acceptedTokens` | Every directly depositable asset. Native ETH is the zero address |
 | `shareToken` | The receipt token the user ends up holding |
-| `depositActionType` | How the deposit is executed. One of `erc4626-deposit`, `aave-v3-pool-supply`, `compound-v3-supply`, `compound-v2-mint`, `aave-staked-token-stake`, `lido-earn-deposit`, or `midas-deposit-instant` |
+| `depositActionType` | How the deposit is executed. One of `erc4626-deposit`, `aave-v3-pool-supply`, `compound-v3-supply`, `compound-v2-mint`, `aave-staked-token-stake`, `lido-earn-deposit`, `midas-deposit-instant`, or `erc7540-request-deposit`. Treat it as an open set |
 | `supportedActions` | Currently `["deposit"]` on every target |
 
 <Warning>
-  **There is no withdraw path through the Forwarder.** Every registered target supports deposits only. Users exit through the protocol directly, exactly as they would without Boost, and doing so does not affect their activation.
+  **There is no withdraw path through the Forwarder.** Every registered target supports deposits only. Users exit through the protocol directly, exactly as they would without Rabbithole, and doing so does not affect their activation.
 </Warning>
 
 Call this endpoint to preflight your UI: if a campaign's target is not in the list, do not offer the deposit.
+
+### Async Vaults
+
+Targets with `depositActionType: "erc7540-request-deposit"` are ERC-7540 async vaults. The deposit transaction only **requests** a deposit: the input token leaves the wallet immediately, but the share token arrives later, once the vault settles the request. Until then the user holds no position in the target, so they are not earning yet.
+
+Say so in your UI. After the transaction confirms, show the deposit as pending settlement rather than as a live position, and do not expect the user to appear in `rewards.forUser` until the shares land.
 
 ## Build the Deposit
 
@@ -138,6 +144,127 @@ for (const tx of deposit.transactions) {
 <Warning>
   Wait for each transaction to confirm before sending the next. The deposit will revert if the approval has not landed.
 </Warning>
+
+## Full React Component
+
+A complete deposit form for a Next.js, wagmi, and TanStack Query app, built on the client from [Project Setup](/developers/examples/setup). It renders nothing for campaigns that do not require the Forwarder, looks up the target, switches the wallet to the **event chain**, sends the approval and deposit in order, and handles the async-vault case.
+
+<Accordion title="components/deposit-button.tsx" icon="code">
+  ```tsx title="components/deposit-button.tsx"
+  "use client";
+
+  import type { Campaign } from "@boostxyz/tbi-sdk";
+  import { useMutation, useQuery } from "@tanstack/react-query";
+  import { useState } from "react";
+  import { parseUnits } from "viem";
+  import { useAccount, usePublicClient, useSwitchChain, useWalletClient } from "wagmi";
+  import { tbi } from "@/lib/tbi";
+
+  /** Is this campaign's target registered with the Forwarder? */
+  export function useForwarderTarget(campaign: Campaign) {
+    return useQuery({
+      queryKey: ["tbi", "forwarder", "targets"],
+      queryFn: () => tbi.forwarder.targets(),
+      staleTime: Infinity,
+      select: (targets) =>
+        targets.find(
+          (t) =>
+            t.chainId === campaign.target.chainId &&
+            t.targetAddress === campaign.target.address,
+        ) ?? null,
+    });
+  }
+
+  export function DepositButton({ campaign }: { campaign: Campaign }) {
+    // Deposits happen on the EVENT chain, where the position lives.
+    const eventChainId = campaign.target.chainId;
+    const { address, chainId: walletChainId } = useAccount();
+    const { data: walletClient } = useWalletClient({ chainId: eventChainId });
+    const publicClient = usePublicClient({ chainId: eventChainId });
+    const { switchChain, isPending: switching } = useSwitchChain();
+    const { data: target, isPending: loadingTarget } = useForwarderTarget(campaign);
+    const [amount, setAmount] = useState("");
+
+    const deposit = useMutation({
+      mutationFn: async () => {
+        if (!walletClient || !publicClient || !address || !target) {
+          throw new Error("Wallet not ready");
+        }
+        const built = await tbi.forwarder.buildDeposit({
+          target: campaign.target,
+          amount: parseUnits(amount, target.acceptedToken.decimals),
+          sender: address,
+        });
+
+        // One or two transactions: an approval only if the allowance is short,
+        // then the deposit. Each must confirm before the next is sent.
+        let hash: `0x${string}` | undefined;
+        for (const tx of built.transactions) {
+          hash = await walletClient.sendTransaction({
+            account: address,
+            chain: walletClient.chain,
+            to: tx.to,
+            data: tx.data,
+            value: tx.value,
+          });
+          await publicClient.waitForTransactionReceipt({ hash });
+        }
+        return hash;
+      },
+    });
+
+    if (!campaign.requiresForwarderDeposit) return null;
+    if (loadingTarget) return <p>Checking deposit route…</p>;
+    if (!target) return <p>Direct deposits are not available for this vault.</p>;
+    if (!address) return <p>Connect a wallet to deposit.</p>;
+
+    if (walletChainId !== eventChainId) {
+      return (
+        <button disabled={switching} onClick={() => switchChain({ chainId: eventChainId })}>
+          Switch network to deposit
+        </button>
+      );
+    }
+
+    if (deposit.isSuccess) {
+      // ERC-7540 vaults settle later: the shares, and the earning, arrive after.
+      return target.depositActionType === "erc7540-request-deposit" ? (
+        <p>Deposit requested. It starts earning once the vault settles it.</p>
+      ) : (
+        <p>Deposited. This position now counts toward the campaign.</p>
+      );
+    }
+
+    return (
+      <form
+        onSubmit={(event) => {
+          event.preventDefault();
+          deposit.mutate();
+        }}
+      >
+        <input
+          inputMode="decimal"
+          placeholder={`Amount in ${target.acceptedToken.symbol}`}
+          value={amount}
+          onChange={(event) => setAmount(event.target.value)}
+        />
+        <button type="submit" disabled={deposit.isPending || amount === "" || !walletClient}>
+          {deposit.isPending ? "Depositing…" : `Deposit ${target.acceptedToken.symbol}`}
+        </button>
+        {deposit.error ? <p role="alert">{deposit.error.message}</p> : null}
+      </form>
+    );
+  }
+  ```
+
+  Use it with a campaign object from discovery:
+
+  ```tsx
+  <DepositButton campaign={campaign} />
+  ```
+
+  For a multi-asset target, add a select over `target.acceptedTokens` and pass the choice to `buildDeposit` as `inputToken`.
+</Accordion>
 
 ## V1 Limits
 

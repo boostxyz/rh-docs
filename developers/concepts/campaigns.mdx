@@ -163,8 +163,11 @@ For what each mode is *for* (the campaign-design view rather than the data view)
 | `UniswapV4LP` | `poolId`, `poolManager`, `token0`, `token1`, `shareModel` | A Uniswap v4 pool position |
 | `Polymarket` | `address`, `tokenId` | A prediction-market outcome share |
 | `Forkast` | `address`, `tokenId` | A prediction-market outcome share |
+| `Ledger` | `address`, `protocol`, `marketKey`, `asset` | A supply position in a lending market that has no share token, such as Aave v4 or Morpho Blue |
 
-Match on `target.address` for ERC-20 style targets and on `target.poolId` for Uniswap v4 pools.
+Match on `target.address` for ERC-20 style targets, on `target.poolId` for Uniswap v4 pools, and on `target.protocol` plus `target.marketKey` for Ledger targets. `tokenStandard` is typed as a plain `string` so new standards do not break your build; skip targets you do not recognise.
+
+`protocol` also appears on some ERC-20 targets to mark a protocol position token, for example `"beefy-clm"` or `"erc7540"` (the share token of an async vault).
 
 `shareModel` on a v4 target says how an LP's slice is computed. Treat it as an open string rather than a closed set:
 
