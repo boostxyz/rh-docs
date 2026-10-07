@@ -66,7 +66,10 @@ The raw response:
   "rewardsDistributed": "1949",
   "rewardsRemaining": "13498051",
   "boostApyBps": null,
-  "protocolApyBps": "247"
+  "protocolApyBps": "247",
+  "estimatedEndDate": null,
+  "fundedUntil": null,
+  "budgetExhausted": null
 }
 ```
 
@@ -77,12 +80,14 @@ The raw response:
 | `tvl` | Campaign TVL in USD with 6 decimals. `"7608022"` = $7.61 |
 | `participants` | Wallets that have entered the campaign. A wallet that entered and later withdrew stays counted, so this is not a live holder count |
 | `rewardsDistributed` / `rewardsRemaining` | Reward-token base units. The token and its decimals are on the full campaign object |
+| `estimatedEndDate` | Projected end of accrual as unix seconds, capped at `endTime`. `null` unless the campaign is active |
+| `fundedUntil` / `budgetExhausted` | Runway for [open-ended campaigns](/developers/concepts/campaigns#open-ended-campaigns). Always `null` on fixed-end campaigns |
 
 `campaigns.stats` returns only the numbers that move, so it is the cheap call to poll. Use `campaigns.get` when you also need the schedule, modes, target, or reward token.
 
 ## Handling Rules
 
-Three rules keep the row honest.
+Four rules keep the row honest.
 
 **1. `boostApyBps` can be `null`.** It happens before a campaign starts, after it ends, when TVL is zero, and briefly if the reward-token price feed lags.
 
@@ -102,6 +107,8 @@ const protocol = formatBps(stats.protocolApyBps);
 ```
 
 **3. Never sum the two APYs silently.** `boostApyBps` and `protocolApyBps` measure different things and can each be `null` independently. Show them as separate lines, or combine them only where your UI explicitly presents a total estimate and says so.
+
+**4. Show "time remaining" from `estimatedEndDate`, not `endTime`.** For a fixed-end campaign the two match. For an open-ended campaign `endTime` is only a ceiling, and the campaign stops when its budget runs out. Once `budgetExhausted` is `true` the campaign pays nothing, so treat it like a `null` APY and hide the reward line.
 
 ## Polling and Caching
 

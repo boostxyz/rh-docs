@@ -16,7 +16,7 @@ This page assumes the client and helpers from [Project Setup](/developers/exampl
 | Protocol APR | `protocolApyBps` | What the vault or pool pays on its own. Often `null` |
 | TVL | `tvl` | USD with 6 decimals |
 | Rewards | `rewardToken.symbol` | What participants earn |
-| Ends | `endTime` | Unix seconds as a `bigint` |
+| Ends | `estimatedEndDate`, falling back to `endTime` | The projected end. For [open-ended campaigns](/developers/concepts/campaigns#open-ended-campaigns) `endTime` is only a ceiling |
 
 ## The Component
 
@@ -72,7 +72,7 @@ function OpportunityRow({ campaign }: { campaign: Campaign }) {
       <td>{formatBps(campaign.protocolApyBps) ?? "—"}</td>
       <td>{formatUsd(campaign.tvl)}</td>
       <td>{campaign.rewardToken.symbol}</td>
-      <td>{endsIn(campaign.endTime)}</td>
+      <td>{endsIn(campaign)}</td>
     </tr>
   );
 }
@@ -123,7 +123,7 @@ export default async function OpportunitiesPage() {
     rewardApr: formatBps(campaign.boostApyBps) ?? "—",
     tvl: formatUsd(campaign.tvl),
     token: campaign.rewardToken.symbol,
-    ends: endsIn(campaign.endTime),
+    ends: endsIn(campaign),
   }));
 
   return (

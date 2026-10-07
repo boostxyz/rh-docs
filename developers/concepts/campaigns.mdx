@@ -69,9 +69,49 @@ const claimChainId = data[0].id.chainId;
 
 For the business-facing view of these phases (what a creator can change in each, and when budget becomes recoverable), see [Campaign Lifecycle](/campaigns/campaign-lifecycle).
 
+## Open-Ended Campaigns
+
+Most campaigns are **fixed-end**: `totalRewards` is spread evenly from `startTime` to `endTime`. An **open-ended** campaign (`openEnded: true`) instead pays out at a fixed rate until one of three things happens: the budget runs out, `endTime` passes, or the campaign is cancelled. Its creator can top up the budget while it runs.
+
+| Field | Fixed-end | Open-ended |
+| --- | --- | --- |
+| `openEnded` | `false` | `true` |
+| `emissionRate` | `null` | Reward-token base units per second across all participants, scaled by `EMISSION_RATE_PRECISION` (10^12) |
+| `endTime` | When accrual stops | The **latest possible** end. The campaign usually stops earlier, when the budget runs out |
+| `totalRewards` | Fixed at creation | Grows with each top-up |
+| `fundingHistory` | `[]` | One entry per top-up, oldest first. The initial budget is not listed |
+
+Top-ups extend **how long** the campaign runs. They never raise the rate, so they never raise the APY. The rate is also a ceiling: an `apyCap` mode can pay less than `emissionRate`.
+
+To show the daily emission:
+
+```ts
+import { EMISSION_RATE_PRECISION } from "@boostxyz/tbi-sdk";
+import { formatUnits } from "viem";
+
+if (campaign.openEnded && campaign.emissionRate !== null) {
+  const perDay = (campaign.emissionRate * 86_400n) / EMISSION_RATE_PRECISION;
+  const label = `${formatUnits(perDay, campaign.rewardToken.decimals)} ${campaign.rewardToken.symbol}/day`;
+}
+```
+
+### Runway
+
+Three fields, on both `campaigns.get` and `campaigns.stats`, say how long an open-ended campaign will keep paying:
+
+| Field | Meaning |
+| --- | --- |
+| `fundedUntil` | The budget lasts until **at least** this time, capped at `endTime`. It assumes the full `emissionRate`, so the real run-out can be later. `null` for fixed-end campaigns, once the budget is spent, and after the campaign has ended |
+| `estimatedEndDate` | The projected end at the current effective rate, capped at `endTime`. Slower under an APY cap, paused while nobody holds a position. Also set for fixed-end campaigns (where it is `endTime`) and fixed-APY campaigns. `null` unless the campaign is active |
+| `budgetExhausted` | `true` once the whole budget has been paid out. The campaign then pays nothing and ends at the next settlement unless it is topped up first. `null` for fixed-end campaigns |
+
+<Warning>
+  **Do not use `endTime` as an open-ended campaign's end date.** It is a ceiling, often months away. Show `estimatedEndDate` as "ends around", or `fundedUntil` as "funded until at least", and hide the reward APR once `budgetExhausted` is `true`.
+</Warning>
+
 ## Reading Accrual From the API
 
-Rewards are computed off-chain by Boost's indexers from on-chain events. You never reproduce the math; you read a field.
+Rewards are computed off-chain by Rabbithole's indexers from on-chain events. You never reproduce the math; you read a field.
 
 | To show | Field | Read from |
 | --- | --- | --- |

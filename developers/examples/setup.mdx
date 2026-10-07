@@ -147,13 +147,22 @@ export function campaignLabel(campaign: Campaign) {
   return `${target.address.slice(0, 6)}…${target.address.slice(-4)}`;
 }
 
-/** "12d left", "5h left", or "Ended". */
-export function endsIn(endTime: bigint) {
-  const ms = Number(endTime) * 1000 - Date.now();
+/**
+ * "12d left", "~12d left", "5h left", or "Ended". Uses the projected end when
+ * the API has one: an open-ended campaign's `endTime` is only a ceiling, and it
+ * usually stops sooner, when its budget runs out. The "~" marks that estimate.
+ */
+export function endsIn(
+  campaign: Pick<Campaign, "endTime" | "estimatedEndDate" | "fundedUntil" | "openEnded">,
+) {
+  const projected = campaign.estimatedEndDate ?? campaign.fundedUntil;
+  const end = projected ? projected.getTime() : Number(campaign.endTime) * 1000;
+  const ms = end - Date.now();
   if (ms <= 0) return "Ended";
+  const prefix = campaign.openEnded ? "~" : "";
   const days = Math.floor(ms / 86_400_000);
-  if (days > 0) return `${days}d left`;
-  return `${Math.floor(ms / 3_600_000)}h left`;
+  if (days > 0) return `${prefix}${days}d left`;
+  return `${prefix}${Math.floor(ms / 3_600_000)}h left`;
 }
 ```
 
