@@ -112,7 +112,8 @@
             "pages": [
               "developers/concepts/campaigns",
               "developers/concepts/claiming",
-              "developers/concepts/data-conventions"
+              "developers/concepts/data-conventions",
+              "developers/concepts/referrals"
             ]
           },
           {
@@ -121,7 +122,8 @@
               "developers/guides/display-campaign-stats",
               "developers/guides/show-user-rewards",
               "developers/guides/claim-rewards",
-              "developers/guides/forwarder-deposits"
+              "developers/guides/forwarder-deposits",
+              "developers/guides/referrals"
             ]
           },
           {
