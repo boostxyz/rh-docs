@@ -102,7 +102,7 @@ export function useVaultCampaigns(chainId: number, address: `0x${string}`) {
 }
 ```
 
-Then render one row per vault, or a single "Earn 15.50% extra" badge when the list is non-empty. For a Uniswap v4 pool, match on `target.poolId` client-side; see [Find Your Campaign](/developers/guides/display-campaign-stats#find-your-campaign).
+Then render one row per vault, or a single badge when the list is non-empty; the [Reward Badge](/developers/examples/reward-badge) is that component. For a Uniswap v4 pool, match on `target.poolId` client-side; see [Find Your Campaign](/developers/guides/display-campaign-stats#find-your-campaign).
 
 ## Server Components
 
@@ -155,7 +155,7 @@ export default async function OpportunitiesPage() {
 - **Never render a null APR as `0.00%`.** A live campaign showing zero reads as broken. Show a dash or hide the cell.
 - **Never sum the two APRs silently.** They measure different things and can each be `null` on their own. Two lines, or one total that is labelled as an estimate.
 - **`participants` is not a live holder count.** A wallet that entered and later withdrew stays counted. Use it for social proof, not for "currently earning".
-- **Forwarder-only campaigns are hidden by default.** If your deposit flow uses the [Deposit Button](/developers/examples/deposit-button), pass `includeForwarderRequired: true` so those campaigns appear.
+- **Forwarder-only campaigns are hidden by default.** If you route deposits through the Forwarder (see [Forwarder Deposits](/developers/guides/forwarder-deposits)), pass `includeForwarderRequired: true` so those campaigns appear.
 
 ## Keep Exploring
 

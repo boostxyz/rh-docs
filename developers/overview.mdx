@@ -30,6 +30,9 @@ There is less to arrange than you might expect.
 Each of these is a complete React component for a Next.js, wagmi, and viem stack. Copy it, point it at your campaign, and ship. The guide behind each one explains the endpoints it calls.
 
 <CardGroup cols={2}>
+  <Card title="Reward Badge" icon="percent" href="/developers/examples/reward-badge">
+    Your campaign's reward APR, time left, and what the connected wallet has earned, next to your own deposit form.
+  </Card>
   <Card title="Opportunities List" icon="table-list" href="/developers/examples/opportunities-list">
     A table of live campaigns with reward APR, TVL, and time remaining, for your own pools or a whole chain.
   </Card>
@@ -39,12 +42,11 @@ Each of these is a complete React component for a Next.js, wagmi, and viem stack
   <Card title="Claim Button" icon="hand-holding-dollar" href="/developers/examples/claim-button">
     Switches chain, simulates, submits, waits for the receipt, and updates the UI safely.
   </Card>
-  <Card title="Deposit Button" icon="arrow-down-to-bracket" href="/developers/examples/deposit-button">
-    Routes a deposit through the Boost Forwarder for campaigns that require activation.
-  </Card>
 </CardGroup>
 
-Start with [Project Setup](/developers/examples/setup) for the shared client, providers, and formatting helpers. Prefer the endpoint-level view? The same four outcomes are covered as [guides](/developers/guides/display-campaign-stats), with curl alongside TypeScript.
+Start with [Project Setup](/developers/examples/setup) for the shared client, providers, and formatting helpers. Smaller pieces, such as a campaign status line or open-ended runway, are on [Recipes](/developers/examples/recipes). Prefer the endpoint-level view? The same outcomes are covered as [guides](/developers/guides/display-campaign-stats), with curl alongside TypeScript.
+
+Running a campaign with a referral pool? [Add Referrals](/developers/guides/referrals) covers binding referees from your links, showing referrers what they have earned, and claiming their payouts.
 
 ## SDK or Raw REST
 
@@ -74,6 +76,7 @@ These apply across every guide:
 - **[Campaigns, IDs, and Chains](/developers/concepts/campaigns)**: the compound campaign key, the event-versus-reward-chain rule, lifecycle status, and campaign modes as data.
 - **[How Claiming Works](/developers/concepts/claiming)**: merkle roots, cumulative amounts, and why earned and claimable are different numbers.
 - **[Data Conventions](/developers/concepts/data-conventions)**: wire formats, `bigint` amounts, pagination, caching, and rate limits.
+- **[How Referrals Work](/developers/concepts/referrals)**: global binds, estimated versus final earnings, and one-shot payouts.
 - **[TypeScript SDK](/developers/sdk)**: install, configuration, and the full method surface.
 - **[Errors](/developers/errors)**: the shared error envelope and the typed SDK classes.
 - **[Contracts](/developers/contracts)**: the TBI Manager, the claim signature, and every revert selector.
