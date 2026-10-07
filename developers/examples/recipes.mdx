@@ -1,0 +1,152 @@
+---
+title: "Recipes"
+description: "Small, composable pieces: a campaign status line, open-ended runway, per-campaign earnings, referral binds, and Forwarder deposits"
+---
+
+Short snippets that build on the full examples. Each one reuses the client and helpers from [Project Setup](/developers/examples/setup) and links to the guide that explains the endpoints behind it.
+
+## Campaign Status Line
+
+One string for the state of a campaign, for a badge subtitle, a table cell, or a tooltip. Pass the wallet's claimable amount when you have it, so a finished campaign with unclaimed rewards says so.
+
+```ts title="lib/campaign-status.ts"
+import type { Campaign } from "@boostxyz/tbi-sdk";
+import { endsIn } from "@/lib/format";
+
+export function campaignStatusLine(campaign: Campaign, claimable = 0n) {
+  if (claimable > 0n) return "Rewards ready to claim";
+
+  switch (campaign.status) {
+    case "pending": {
+      const days = Math.ceil((Number(campaign.startTime) * 1000 - Date.now()) / 86_400_000);
+      return days > 1 ? `Starts in ${days} days` : "Starts soon";
+    }
+    case "active":
+      if (campaign.budgetExhausted) return "Rewards paused, budget spent";
+      return endsIn(campaign); // "12d left", or "~12d left" when open-ended
+    case "ended":
+      return "Ended, final rewards on the way";
+    case "finalized":
+      return "Ended";
+    case "cancelled":
+      return "Cancelled";
+    default:
+      return null; // statuses added later: render nothing rather than guess
+  }
+}
+```
+
+`claimable` comes from `userPosition.claimable`, `claims.statuses`, or `rewards.forUser`. Status alone never decides claimability: an `ended` or `finalized` campaign can still have rewards waiting. See [Lifecycle and Claimability](/developers/concepts/campaigns#lifecycle-and-claimability).
+
+## Open-Ended Runway
+
+[Open-ended campaigns](/developers/concepts/campaigns#open-ended-campaigns) pay a fixed amount per second until their budget runs out, so "time left" is a projection. This shows the daily emission and how long it is funded for.
+
+```ts title="lib/runway.ts"
+import { type Campaign, EMISSION_RATE_PRECISION } from "@boostxyz/tbi-sdk";
+import { formatToken } from "@/lib/format";
+
+export function runwayLabel(campaign: Campaign) {
+  if (!campaign.openEnded || campaign.emissionRate === null) return null;
+  if (campaign.budgetExhausted) return "Budget spent";
+
+  const { decimals, symbol } = campaign.rewardToken;
+  const perDay = (campaign.emissionRate * 86_400n) / EMISSION_RATE_PRECISION;
+  const rate = `${formatToken(perDay, decimals, symbol)}/day`;
+
+  if (!campaign.fundedUntil) return rate;
+  const date = campaign.fundedUntil.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  return `${rate}, funded until at least ${date}`;
+}
+```
+
+`fundedUntil` is a floor: it assumes the full emission rate, and an APY cap or quiet periods only make the budget last longer. Top-ups push it out without changing the rate.
+
+## Per-Campaign Earnings
+
+The [Rewards Panel](/developers/examples/rewards-panel) lists every campaign. When a page is about one campaign, select it out of the same query, so the two views share a cache entry.
+
+```ts title="hooks/use-campaign-earnings.ts"
+import type { CampaignId } from "@boostxyz/tbi-sdk";
+import { useQuery } from "@tanstack/react-query";
+import { tbi } from "@/lib/tbi";
+
+export function useCampaignEarnings(id: CampaignId, address?: `0x${string}`) {
+  return useQuery({
+    queryKey: ["tbi", "rewards", address],
+    queryFn: () =>
+      tbi.rewards.forUser(address!, { status: ["active", "ended", "finalized"] }),
+    enabled: !!address,
+    refetchInterval: 60_000,
+    select: ({ data }) =>
+      data.find(
+        (r) => r.id.chainId === id.chainId && r.id.campaignIndex === id.campaignIndex,
+      ) ?? null,
+  });
+}
+```
+
+`null` means the wallet has not entered the campaign. Otherwise `accumulatedRewards` is what it has earned, and `claimable` is what it can claim now. Why those two differ is in [How Claiming Works](/developers/concepts/claiming#two-clocks).
+
+## Referral Bind Before Deposit
+
+For campaigns with a referral pool: bind the referee to the referrer from your link right before they sign their first deposit. Never let it block the deposit.
+
+```ts title="lib/referral-bind.ts"
+import { type Address, TbiApiError } from "@boostxyz/tbi-sdk";
+import type { WalletClient } from "viem";
+import { tbi } from "@/lib/tbi";
+
+/** Binds once, quietly. Every outcome lets the deposit continue. */
+export async function bindReferralQuietly(walletClient: WalletClient, referrer: Address | null) {
+  if (!referrer) return;
+  try {
+    await tbi.referrals.bind({ walletClient, referrer });
+  } catch (e) {
+    if (!(e instanceof TbiApiError)) console.warn("Referral bind failed", e);
+    // TbiApiError: already bound, self-referral, unlinked wallet, and so on.
+    // The user deposits unattributed; nothing to show them.
+  }
+}
+```
+
+Call it in your deposit handler before sending the deposit transaction. It costs the user one signature and no gas. Two things to know before you add it:
+
+- **Both wallets need Rabbithole accounts.** A referee without a linked Rabbithole wallet is rejected with `WALLET_NOT_LINKED`, which for many partner users will be the common case.
+- **Username links need resolving first.** The [Add Referrals](/developers/guides/referrals#accept-a-username-link) guide has `resolveReferrer()` for that, and the full list of rejection codes.
+
+## Forwarder Deposit
+
+Only campaigns with `requiresForwarderDeposit: true` need this. They reward positions that entered through the Rabbithole Forwarder, and discovery hides them unless you pass `includeForwarderRequired: true`. If you run a campaign on your own vault and users deposit through your own frontend, you do not need it.
+
+The short version:
+
+```ts
+const built = await tbi.forwarder.buildDeposit({ target: campaign.target, amount, sender });
+for (const tx of built.transactions) {
+  const hash = await walletClient.sendTransaction({
+    account: sender,
+    chain: walletClient.chain,
+    to: tx.to,
+    data: tx.data,
+    value: tx.value,
+  });
+  await publicClient.waitForTransactionReceipt({ hash }); // approval must land before the deposit
+}
+```
+
+Deposits happen on the **event chain**, where the vault is, not the reward chain. A complete React component, with the chain switch, target lookup, and multi-asset handling, is in [Forwarder Deposits](/developers/guides/forwarder-deposits#full-react-component).
+
+## Keep Exploring
+
+<CardGroup cols={3}>
+  <Card title="Reward Badge" href="/developers/examples/reward-badge">
+    The status line and earnings, assembled for a vault page.
+  </Card>
+  <Card title="Rewards Panel" href="/developers/examples/rewards-panel">
+    Every campaign the wallet has earned in.
+  </Card>
+  <Card title="Add Referrals" href="/developers/guides/referrals">
+    The full referral flow, from link to payout.
+  </Card>
+</CardGroup>
