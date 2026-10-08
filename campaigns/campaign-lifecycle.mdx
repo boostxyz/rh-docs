@@ -127,11 +127,15 @@ Use this when goals shift, when a partner relationship changes, or when somethin
 
 ### Automatic early end
 
-A **Fixed APY** campaign ends as soon as its reward budget is fully paid out, even if `endTime` hasn't been reached. This happens when participation is higher than the team anticipated — the budget drains faster than the original schedule, and the campaign wraps up the moment the last reward is distributed.
+A campaign ends as soon as its reward budget is fully paid out, even if `endTime` hasn't been reached. This happens in two cases.
 
-Other modes don't trigger this. **Capped APY** never moves the schedule — when the cap binds, less reward gets distributed per second, and the held-back budget simply stays in the pool as recoverable funds at finalization. The various caps and filters affect who earns and how much, but they never push the campaign past — or short of — the scheduled `endTime`.
+**Campaigns that can be topped up** pay out at a set daily rate, so the budget lasts `budget ÷ daily rate` and the campaign ends when it runs out, unless it is topped up first. Quiet periods and **Capped APY** slow the payout rather than holding budget back, so they only make the campaign run longer, never shorter, up to its latest end date. If at least one eligible position is held throughout and there's no cap, the end date is known from launch and only moves with top-ups.
 
-When a Fixed APY campaign ends early, the flow is the same as any other ending: status flips to `ended`, the final snapshot rolls up the last earnings, and the campaign moves into Finalized once the operator settles.
+A **Fixed APY** campaign ends early when participation is higher than the team anticipated. The budget drains faster than the original schedule, and the campaign wraps up the moment the last reward is distributed.
+
+On other campaigns, modes don't trigger this. **Capped APY** never moves the schedule there: when the cap binds, less reward gets distributed per second, and the held-back budget stays in the pool as recoverable funds at finalization.
+
+An automatic early end follows the same flow as any other ending: status flips to `ended`, the final snapshot rolls up the last earnings, and the campaign moves into Finalized once the operator settles. The claim window still runs from `endTime`, so users get the full window, measured from the latest end date rather than from when the budget ran out.
 
 ### What can't change
 
