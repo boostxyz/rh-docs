@@ -55,13 +55,13 @@ What's happening behind the scenes:
 - A reward snapshot publishes on a regular cadence so claims become available shortly after the campaign goes live.
 - The team can watch the campaign run on [rabbithole.gg](https://rabbithole.gg) — TVL, participants, distributed rewards, and live leaderboard stats are all surfaced there.
 
-If the team needs to **end the campaign early**, this is the only window for that. See [Mid-flight adjustments](#mid-flight-adjustments) below.
+If the team needs to **top up** or **end the campaign early**, this is the only window for either. See [Mid-flight adjustments](#mid-flight-adjustments) below.
 
 ---
 
 ### Ended
 
-`endTime` has passed (or the campaign has otherwise stopped — see [Mid-flight adjustments](#mid-flight-adjustments)). Earning stops for everyone, but the campaign isn't fully wrapped up yet.
+`endTime` has passed, the budget has run out, or the campaign was ended early (see [Mid-flight adjustments](#mid-flight-adjustments)). Earning stops for everyone, but the campaign isn't fully wrapped up yet.
 
 A few things are still in motion:
 
@@ -101,7 +101,19 @@ Once the window closes:
 
 ## Mid-flight adjustments
 
-A campaign can leave the active phase before its scheduled `endTime` in two ways.
+While a campaign is active, it can be topped up to run longer. It can also leave the active phase before its scheduled `endTime` in two ways: early termination or an automatic early end.
+
+### Topping up
+
+A top-up adds funds to a live campaign so it keeps paying out for longer.
+
+- **The rate stays the same.** Rewards keep paying out at the campaign's daily rate, so a top-up extends how long the campaign runs. It doesn't raise the APY.
+- **The fee matches the original deposit.** It comes out of the amount added, at the rate agreed when the campaign was created. See [Pricing](/campaigns/pricing#how-fees-are-applied).
+- **The minimum is one day of rewards.** A top-up must cover at least 24 hours at the campaign's daily rate, after the fee.
+- **Top up before the budget runs out.** Once a campaign runs out it ends, and it is usually finalized within minutes. A finalized campaign can't be topped up; continuing means launching a new one.
+- **The latest end date doesn't move.** Each campaign has a latest end date, set at launch and at most a year out. Funds that can't be paid out before then stay in the campaign and are recoverable at finalization.
+
+Top-ups come from the same budget that funded the campaign, and the Rabbithole team handles them like the original deposit. Raise one with the team while the campaign still has runway.
 
 ### Early termination
 
