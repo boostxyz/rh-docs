@@ -9,7 +9,7 @@ A quick reference for terminology used across these docs. Each entry links to th
 
 **Rabbithole** — The platform behind Time-Based Incentives. Rabbithole runs the operational layer end-to-end: indexing on-chain events, computing rewards, publishing snapshots, and serving campaign data. References to "the operator" in these docs mean Rabbithole. Developer identifiers still carry the Boost name, such as the `@boostxyz/tbi-sdk` package and the `api-tbi.boost.xyz` host.
 
-**Campaign** — A single incentive program: a fixed reward budget paid out continuously over a fixed schedule against a chosen [target](#target) position. Each campaign has its own configuration — targets, budget, schedule, eligibility, and any modes.
+**Campaign** — A single incentive program: a reward budget paid out continuously at a set rate against a chosen [target](#target) position. Each campaign has its own configuration — targets, budget, schedule, eligibility, and any modes.
 
 **Creator** — The team or address that funded and configured a campaign.
 
@@ -29,7 +29,7 @@ A quick reference for terminology used across these docs. Each entry links to th
 
 **Accrued rewards** — The reward total a user has earned but not yet claimed. Updates continuously as their position changes.
 
-**Drip** — The continuous flow of rewards out of a campaign budget. The drip rate is set by `total budget ÷ duration` and runs every second the campaign is active.
+**Drip** — The continuous flow of rewards out of a campaign budget. The drip rate is set by `total budget ÷ duration` and runs every second the campaign is active. On a campaign that can be [topped up](#top-up), the daily rate is set directly and the duration follows from the budget.
 
 **Eligible balance** — A user's position size as it counts for rewards. Modes can transform raw balance into eligible balance — capping it, multiplying it, or zeroing it out below a threshold.
 
@@ -57,7 +57,7 @@ A quick reference for terminology used across these docs. Each entry links to th
 
 See [Campaign Lifecycle](/campaigns/campaign-lifecycle) for the full arc.
 
-**Active** — The campaign is live. `startTime` has passed and `endTime` hasn't. Users earn continuously.
+**Active** — The campaign is live. `startTime` has passed, `endTime` hasn't, and the budget hasn't run out. Users earn continuously.
 
 **Cancelled** — The campaign was ended early by the creator or admin. Already-accrued rewards stay claimable on the normal schedule.
 
@@ -65,7 +65,7 @@ See [Campaign Lifecycle](/campaigns/campaign-lifecycle) for the full arc.
 
 **Configured (Pending)** — The campaign is deployed and funded, but `startTime` hasn't hit. No earning yet.
 
-**Ended** — `endTime` has passed (or the campaign otherwise stopped early). Earning has stopped, but the system is still settling.
+**Ended** — `endTime` has passed, the budget has run out, or the campaign was stopped early. Earning has stopped, but the system is still settling.
 
 **Finalized** — The final snapshot is locked. Total distributed rewards are confirmed and the creator can recover any unspent budget.
 
@@ -77,7 +77,9 @@ See [Campaign Lifecycle](/campaigns/campaign-lifecycle) for the full arc.
 
 **Claim window** — The period after a campaign finalizes during which users can still claim earned rewards. Standard campaigns use a 60-day window; configurable per campaign.
 
-**endTime** — When earning stops on the standard schedule.
+**endTime** — When earning stops on the standard schedule. On a campaign that can be [topped up](#top-up), it is the latest end date: the campaign usually stops earlier, when its budget runs out.
+
+**Funded until** — On a campaign that can be [topped up](#top-up), the date its current budget lasts until at the full daily rate. A top-up pushes it later, and quiet periods or Capped APY can only make the campaign run past it.
 
 **startTime** — When earning begins.
 
@@ -91,13 +93,15 @@ See [Campaign Lifecycle](/campaigns/campaign-lifecycle) for the full arc.
 
 **Recoverable budget** — The leftover funds the creator can withdraw at the end of a campaign. Includes undistributed rewards, throttled rewards (Capped APY), forfeited rewards (Cliff, when live), and any rewards left unclaimed after the claim window closes.
 
-**Reward budget** — The total amount of reward token committed to a campaign at launch.
+**Reward budget** — The total amount of reward token committed to a campaign at launch, plus any [top-ups](#top-up).
 
 **Reward token** — The token users earn. Set when the campaign is created and locked for the campaign's life.
 
-**Throttled rewards** — Drip that was held back when [Capped APY](#capped-apy) bound the rate below its natural value. Stays in the pool as recoverable budget.
+**Throttled rewards** — Drip that was held back when [Capped APY](#capped-apy) bound the rate below its natural value. Stays in the pool as recoverable budget. On a campaign that can be [topped up](#top-up), it isn't held back; the campaign runs longer instead.
 
-**Undistributed rewards** — Drip that flowed during periods when no one held eligible balance. Stays in the pool as recoverable budget.
+**Top-up** — Funds added to a live campaign to keep it running longer at the same rate. Charged at the fee rate agreed when the campaign was created, and only possible before the budget runs out. See [Topping up](/campaigns/campaign-lifecycle#topping-up).
+
+**Undistributed rewards** — Drip that flowed during periods when no one held eligible balance. Stays in the pool as recoverable budget. On a campaign that can be [topped up](#top-up), quiet periods don't use up budget; the campaign runs longer instead.
 
 ---
 

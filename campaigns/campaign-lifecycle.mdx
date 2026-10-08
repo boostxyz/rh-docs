@@ -47,7 +47,7 @@ If the team needs to change anything material — eligibility, targets, modes �
 
 ### Active
 
-`startTime` has passed and `endTime` hasn't (or, in some setups, the budget hasn't been fully paid out — see [Automatic early end](#automatic-early-end) below). Users earn continuously while their position is eligible.
+`startTime` has passed, `endTime` hasn't, and the budget hasn't been fully paid out (see [Automatic early end](#automatic-early-end) below). Users earn continuously while their position is eligible.
 
 What's happening behind the scenes:
 
@@ -55,13 +55,13 @@ What's happening behind the scenes:
 - A reward snapshot publishes on a regular cadence so claims become available shortly after the campaign goes live.
 - The team can watch the campaign run on [rabbithole.gg](https://rabbithole.gg) — TVL, participants, distributed rewards, and live leaderboard stats are all surfaced there.
 
-If the team needs to **end the campaign early**, this is the only window for that. See [Mid-flight adjustments](#mid-flight-adjustments) below.
+If the team needs to **top up** or **end the campaign early**, this is the only window for either. See [Mid-flight adjustments](#mid-flight-adjustments) below.
 
 ---
 
 ### Ended
 
-`endTime` has passed (or the campaign has otherwise stopped — see [Mid-flight adjustments](#mid-flight-adjustments)). Earning stops for everyone, but the campaign isn't fully wrapped up yet.
+`endTime` has passed, the budget has run out, or the campaign was ended early (see [Mid-flight adjustments](#mid-flight-adjustments)). Earning stops for everyone, but the campaign isn't fully wrapped up yet.
 
 A few things are still in motion:
 
@@ -101,7 +101,19 @@ Once the window closes:
 
 ## Mid-flight adjustments
 
-A campaign can leave the active phase before its scheduled `endTime` in two ways.
+While a campaign is active, it can be topped up to run longer. It can also leave the active phase before its scheduled `endTime` in two ways: early termination or an automatic early end.
+
+### Topping up
+
+A top-up adds funds to a live campaign so it keeps paying out for longer.
+
+- **The rate stays the same.** Rewards keep paying out at the campaign's daily rate, so a top-up extends how long the campaign runs. It doesn't raise the APY.
+- **The fee matches the original deposit.** It comes out of the amount added, at the rate agreed when the campaign was created. See [Pricing](/campaigns/pricing#how-fees-are-applied).
+- **The minimum is one day of rewards.** A top-up must cover at least 24 hours at the campaign's daily rate, after the fee.
+- **Top up before the budget runs out.** Once a campaign runs out it ends, and it is usually finalized within minutes. A finalized campaign can't be topped up; continuing means launching a new one.
+- **The latest end date doesn't move.** Each campaign has a latest end date, set at launch and at most a year out. Funds that can't be paid out before then stay in the campaign and are recoverable at finalization.
+
+Top-ups come from the same budget that funded the campaign, and the Rabbithole team handles them like the original deposit. Raise one with the team while the campaign still has runway.
 
 ### Early termination
 
@@ -115,11 +127,15 @@ Use this when goals shift, when a partner relationship changes, or when somethin
 
 ### Automatic early end
 
-A **Fixed APY** campaign ends as soon as its reward budget is fully paid out, even if `endTime` hasn't been reached. This happens when participation is higher than the team anticipated — the budget drains faster than the original schedule, and the campaign wraps up the moment the last reward is distributed.
+A campaign ends as soon as its reward budget is fully paid out, even if `endTime` hasn't been reached. This happens in two cases.
 
-Other modes don't trigger this. **Capped APY** never moves the schedule — when the cap binds, less reward gets distributed per second, and the held-back budget simply stays in the pool as recoverable funds at finalization. The various caps and filters affect who earns and how much, but they never push the campaign past — or short of — the scheduled `endTime`.
+**Campaigns that can be topped up** pay out at a set daily rate, so the budget lasts `budget ÷ daily rate` and the campaign ends when it runs out, unless it is topped up first. Quiet periods and **Capped APY** slow the payout rather than holding budget back, so they only make the campaign run longer, never shorter, up to its latest end date. If at least one eligible position is held throughout and there's no cap, the end date is known from launch and only moves with top-ups.
 
-When a Fixed APY campaign ends early, the flow is the same as any other ending: status flips to `ended`, the final snapshot rolls up the last earnings, and the campaign moves into Finalized once the operator settles.
+A **Fixed APY** campaign ends early when participation is higher than the team anticipated. The budget drains faster than the original schedule, and the campaign wraps up the moment the last reward is distributed.
+
+On other campaigns, modes don't trigger this. **Capped APY** never moves the schedule there: when the cap binds, less reward gets distributed per second, and the held-back budget stays in the pool as recoverable funds at finalization.
+
+An automatic early end follows the same flow as any other ending: status flips to `ended`, the final snapshot rolls up the last earnings, and the campaign moves into Finalized once the operator settles. The claim window still runs from `endTime`, so users get the full window, measured from the latest end date rather than from when the budget ran out.
 
 ### What can't change
 
@@ -129,7 +145,7 @@ Once a campaign launches, the rules are locked:
 - Targets (which positions count)
 - Eligibility (open, allowlist, verification)
 - Modes (caps, tiers, fixed APY, etc.)
-- Schedule
+- Reward rate and schedule. A top-up extends how long the budget lasts, but not the latest end date
 
 Any meaningful change requires a new campaign.
 
@@ -152,7 +168,7 @@ Any meaningful change requires a new campaign.
 | Phase | Team actions |
 | --- | --- |
 | Configured | Final review, marketing prep, integration testing. |
-| Active | Monitor stats. End early if priorities shift. |
+| Active | Monitor stats. Top up before the budget runs out to keep it running. End early if priorities shift. |
 | Ended | Wait for settlement; no actions required. |
 | Finalized | Recover unspent budget if applicable. |
 | Closed | Recover any unclaimed leftover rewards. |
@@ -166,7 +182,10 @@ When a campaign winds down, leftover budget can show up in a few places. All of 
 - **Undistributed budget** — periods when no one was participating, so no rewards were earned.
 - **Throttled rewards** — when Capped APY held the rate below its natural value, the saved budget stays in the pool.
 - **Forfeited rewards** — when Cliff ships, rewards from broken cliffs flow back here.
+- **Budget past the latest end date** — on a campaign that can be topped up, anything it couldn't pay out before its latest end date.
 - **Unclaimed rewards** — after the claim window closes, anything users didn't pull is returned to the creator.
+
+On a campaign that can be topped up, quiet periods and Capped APY don't leave budget behind; they make the campaign run longer instead.
 
 Nothing gets stuck. Everything that isn't paid out to a user eventually flows back.
 
