@@ -80,8 +80,8 @@ A user pays their own gas to claim, and nothing else. Rabbithole takes no cut of
 
 - **Base.** The fee is computed on the reward budget deposited into the campaign, not on TVL, not on the rewards actually claimed.
 - **Timing.** It is taken when the budget is funded, at campaign creation. Not at the end, and not per claim.
-- **Top-ups are charged the same way.** Adding rewards to a live campaign is treated like the original deposit: the fee comes out of the amount you add.
-- **No top-up needed to cover it.** You do not calculate the fee on top and deposit extra. Fund the budget you intend to fund.
+- **Top-ups are charged the same way.** Adding rewards to a live campaign is treated like the original deposit: the fee comes out of the amount you add, at the rate agreed when the campaign was created. A later change to the fee schedule does not apply to an existing campaign. See [Topping up](/campaigns/campaign-lifecycle#topping-up).
+- **No extra deposit needed to cover it.** You do not calculate the fee on top and deposit extra. Fund the budget you intend to fund.
 
 Worked example at the standard 10% rate:
 
