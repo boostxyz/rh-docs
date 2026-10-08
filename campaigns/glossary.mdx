@@ -93,13 +93,15 @@ See [Campaign Lifecycle](/campaigns/campaign-lifecycle) for the full arc.
 
 **Recoverable budget** — The leftover funds the creator can withdraw at the end of a campaign. Includes undistributed rewards, throttled rewards (Capped APY), forfeited rewards (Cliff, when live), and any rewards left unclaimed after the claim window closes.
 
-**Reward budget** — The total amount of reward token committed to a campaign at launch.
+**Reward budget** — The total amount of reward token committed to a campaign at launch, plus any [top-ups](#top-up).
 
 **Reward token** — The token users earn. Set when the campaign is created and locked for the campaign's life.
 
-**Throttled rewards** — Drip that was held back when [Capped APY](#capped-apy) bound the rate below its natural value. Stays in the pool as recoverable budget.
+**Throttled rewards** — Drip that was held back when [Capped APY](#capped-apy) bound the rate below its natural value. Stays in the pool as recoverable budget. On a campaign that can be [topped up](#top-up), it isn't held back; the campaign runs longer instead.
 
-**Undistributed rewards** — Drip that flowed during periods when no one held eligible balance. Stays in the pool as recoverable budget.
+**Top-up** — Funds added to a live campaign to keep it running longer at the same rate. Charged at the fee rate agreed when the campaign was created, and only possible before the budget runs out. See [Topping up](/campaigns/campaign-lifecycle#topping-up).
+
+**Undistributed rewards** — Drip that flowed during periods when no one held eligible balance. Stays in the pool as recoverable budget. On a campaign that can be [topped up](#top-up), quiet periods don't use up budget; the campaign runs longer instead.
 
 ---
 
