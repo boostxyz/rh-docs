@@ -7,15 +7,17 @@ What a user earns from a campaign comes down to two things: **how much eligible 
 
 ## The drip
 
-Every campaign defines a total reward budget and a duration. Together they set the rate at which rewards flow out:
+Every campaign pays out at a reward rate, set by its budget and how long it runs:
 
 ```
 reward rate = total budget ÷ duration
 ```
 
-A 30-day campaign with a 60,000 USDC budget drips at roughly 2,000 USDC per day, or about 0.023 USDC per second. That stream runs continuously from `startTime` to `endTime`.
+A 30-day campaign with a 60,000 USDC budget drips at roughly 2,000 USDC per day, or about 0.023 USDC per second. That stream runs continuously from `startTime` until the campaign ends.
 
 The drip doesn't pause and doesn't accelerate. The same amount flows every second, regardless of how many users are participating.
+
+A campaign that can be topped up is set the other way round: it has a daily rate, and the duration follows from the budget. Topping it up adds days at the same rate, so it extends the campaign without changing the drip. See [Topping up](/campaigns/campaign-lifecycle#topping-up).
 
 ## Your share of the moment
 
