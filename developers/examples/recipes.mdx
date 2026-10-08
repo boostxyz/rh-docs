@@ -22,7 +22,7 @@ export function campaignStatusLine(campaign: Campaign, claimable = 0n) {
       return days > 1 ? `Starts in ${days} days` : "Starts soon";
     }
     case "active":
-      if (campaign.budgetExhausted) return "Rewards paused, budget spent";
+      if (campaign.budgetExhausted) return "Budget spent, ending soon";
       return endsIn(campaign); // "12d left", or "~12d left" when open-ended
     case "ended":
       return "Ended, final rewards on the way";
