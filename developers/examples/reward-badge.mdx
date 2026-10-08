@@ -99,7 +99,7 @@ The badge renders nothing rather than a misleading number. That covers four case
 
 - **No live campaign on the vault.** Before a campaign starts or after it ends, `campaigns.active` returns nothing for the target.
 - **`boostApyBps` is `null`.** It is `null` at zero TVL and briefly when the reward-token price feed lags. A live campaign showing `0.00%` reads as broken.
-- **The budget is spent.** An [open-ended campaign](/developers/concepts/campaigns#open-ended-campaigns) with `budgetExhausted: true` pays nothing until it is topped up.
+- **The budget is spent.** An [open-ended campaign](/developers/concepts/campaigns#open-ended-campaigns) with `budgetExhausted: true` pays nothing and ends at the next settlement.
 - **The campaign requires Forwarder deposits.** Discovery leaves those out by default, which is what you want: your own deposit form would not activate the position. See [Forwarder Deposits](/developers/guides/forwarder-deposits) if you do route through it.
 
 ## Linking to Claims
