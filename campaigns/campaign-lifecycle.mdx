@@ -21,7 +21,7 @@ The arc is the same for every campaign:
     The campaign is settled. Unspent budget can be recovered. Users keep claiming.
   </Step>
   <Step title="Closed">
-    The claim window has expired. Anything still unclaimed can be reclaimed by the creator.
+    The creator reclaimed the unclaimed rewards after the claim deadline, which closes claims.
   </Step>
 </Steps>
 
@@ -89,12 +89,13 @@ Claims continue to work for the rest of the claim window.
 
 ### Closed
 
-The claim window expires. Standard campaigns run a **60-day claim window** measured from finalization, but this is configurable per campaign.
+Every campaign has a claim deadline: its end date plus a claim window. Standard campaigns run a **60-day claim window** measured from the end date, but this is configurable per campaign.
 
-Once the window closes:
+Until the deadline, everything users earned stays claimable: the creator can only withdraw budget no user earned. After it, unclaimed rewards become recoverable through the same withdraw flow, and users can keep claiming until the creator withdraws them.
 
-- New claims stop being accepted.
-- Anything still unclaimed becomes recoverable by the creator through the same withdraw flow.
+That withdrawal closes the campaign:
+
+- New claims are rejected, and they never reopen.
 - The campaign is fully wound down.
 
 ---
@@ -159,7 +160,7 @@ Any meaningful change requires a new campaign.
 | Active | Hold an eligible position. Watch rewards accrue. Claim as snapshots publish. |
 | Ended | Claim accrued rewards. New earning has stopped. |
 | Finalized | Claim accrued rewards. Final totals are locked. |
-| Closed | Claims rejected. Any unclaimed rewards can be reclaimed by the creator. |
+| Closed | Claims rejected. |
 
 ---
 
@@ -170,8 +171,8 @@ Any meaningful change requires a new campaign.
 | Configured | Final review, marketing prep, integration testing. |
 | Active | Monitor stats. Top up before the budget runs out to keep it running. End early if priorities shift. |
 | Ended | Wait for settlement; no actions required. |
-| Finalized | Recover unspent budget if applicable. |
-| Closed | Recover any unclaimed leftover rewards. |
+| Finalized | Recover unspent budget if applicable. After the claim deadline, recover unclaimed rewards, which closes claims for every user. |
+| Closed | Nothing left to do. |
 
 ---
 
@@ -183,7 +184,7 @@ When a campaign winds down, leftover budget can show up in a few places. All of 
 - **Throttled rewards** — when Capped APY held the rate below its natural value, the saved budget stays in the pool.
 - **Forfeited rewards** — when Cliff ships, rewards from broken cliffs flow back here.
 - **Budget past the latest end date** — on a campaign that can be topped up, anything it couldn't pay out before its latest end date.
-- **Unclaimed rewards** — after the claim window closes, anything users didn't pull is returned to the creator.
+- **Unclaimed rewards** — after the claim deadline, anything users didn't pull is returned to the creator. Withdrawing it closes claims for every user.
 
 On a campaign that can be topped up, quiet periods and Capped APY don't leave budget behind; they make the campaign run longer instead.
 

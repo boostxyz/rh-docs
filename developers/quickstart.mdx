@@ -137,7 +137,7 @@ const { hash } = await tbi.claim({
 The reward goes to `address` no matter who sends the transaction, so relayer and account-abstraction flows work with no special handling.
 
 <Warning>
-  A 404 from `claims.get` is usually a normal state, not a failure: the user has no position in the campaign, or no published root covers their rewards yet. It also returns 404 once the **claim window has closed**, so check the campaign's schedule before rendering an accruing state. See [Errors](/developers/errors).
+  A 404 from `claims.get` is usually a normal state, not a failure: the user has no position in the campaign, or no published root covers their rewards yet. It also returns 404 once the campaign's **claims have closed**, which can only happen after its claim deadline, so check the campaign's schedule before rendering an accruing state. See [Errors](/developers/errors).
 </Warning>
 
 ## Put It Together

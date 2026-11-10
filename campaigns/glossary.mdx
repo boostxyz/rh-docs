@@ -61,7 +61,7 @@ See [Campaign Lifecycle](/campaigns/campaign-lifecycle) for the full arc.
 
 **Cancelled** — The campaign was ended early by the creator or admin. Already-accrued rewards stay claimable on the normal schedule.
 
-**Closed** — The claim window has expired. Anything still unclaimed can be reclaimed by the creator.
+**Closed** — The creator withdrew the unclaimed rewards after the claim deadline, which closes claims for every user.
 
 **Configured (Pending)** — The campaign is deployed and funded, but `startTime` hasn't hit. No earning yet.
 
@@ -75,7 +75,9 @@ See [Campaign Lifecycle](/campaigns/campaign-lifecycle) for the full arc.
 
 **Campaign window** — The interval between `startTime` and `endTime` during which earning happens.
 
-**Claim window** — The period after a campaign finalizes during which users can still claim earned rewards. Standard campaigns use a 60-day window; configurable per campaign.
+**Claim deadline** — The campaign's `endTime` plus its claim window. After it, the creator may withdraw unclaimed rewards, which closes claims. Until they do, users can keep claiming.
+
+**Claim window** — The period after a campaign ends during which users are guaranteed to be able to claim earned rewards. Standard campaigns use a 60-day window; configurable per campaign.
 
 **endTime** — When earning stops on the standard schedule. On a campaign that can be [topped up](#top-up), it is the latest end date: the campaign usually stops earlier, when its budget runs out.
 
@@ -91,7 +93,7 @@ See [Campaign Lifecycle](/campaigns/campaign-lifecycle) for the full arc.
 
 **Forfeited rewards** — Rewards a user accrued but lost — for example, by breaking a [Cliff](#cliff). Stay in the campaign pool, recoverable by the creator at finalization.
 
-**Recoverable budget** — The leftover funds the creator can withdraw at the end of a campaign. Includes undistributed rewards, throttled rewards (Capped APY), forfeited rewards (Cliff, when live), and any rewards left unclaimed after the claim window closes.
+**Recoverable budget** — The leftover funds the creator can withdraw at the end of a campaign. Includes undistributed rewards, throttled rewards (Capped APY), forfeited rewards (Cliff, when live), and any rewards left unclaimed after the claim deadline.
 
 **Reward budget** — The total amount of reward token committed to a campaign at launch, plus any [top-ups](#top-up).
 

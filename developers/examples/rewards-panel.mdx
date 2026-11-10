@@ -111,15 +111,15 @@ The panel above collapses these into "Accruing" and an amount. A production pane
 | Condition | Show |
 | --- | --- |
 | `claimable > 0n` | The amount and an active claim button |
-| `claimable === 0n`, `accumulatedRewards > 0n`, campaign still in its claim window | "Accruing, claimable after the next distribution" |
-| `claimable === 0n` and the claim window has closed | "Claim window closed". Never an accruing message |
+| `claimable === 0n`, `accumulatedRewards > 0n`, claim deadline not yet passed | "Accruing, claimable after the next distribution" |
+| `claimable === 0n` and the claim deadline has passed | "Claims closed". Never an accruing message |
 | Campaign `ended` or `finalized` with `claimable > 0n` | The claim button, exactly as for an active campaign |
 
 <Warning>
   Do not gate the button on campaign status. Accrual stops when a campaign ends, but published rewards stay claimable, and `finalized` means everything earned is claimable. Gate on the amount.
 </Warning>
 
-The claim window comes from the campaign object fetched by `useCampaign`. See [Claim Windows](/developers/concepts/claiming#claim-windows).
+The claim window comes from the campaign object fetched by `useCampaign`. Past the deadline, keep gating on the amount: claims stay open until the creator withdraws, and the amount drops to zero once they close. Show the deadline only until it passes. See [Claim Windows](/developers/concepts/claiming#claim-windows).
 
 ## Totals Across Campaigns
 

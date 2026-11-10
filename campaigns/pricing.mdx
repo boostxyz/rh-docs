@@ -114,11 +114,11 @@ Budget that never reaches a user comes back to you.
 | Campaign ends with budget undistributed | Recoverable by the creator once the campaign is finalized |
 | Rewards throttled by Capped APY | Held back and recoverable, never forfeited to Rabbithole |
 | Rewards forfeited by a broken cliff | Returned to the recoverable pool |
-| Rewards earned but never claimed | Recoverable after the claim window closes |
+| Rewards earned but never claimed | Recoverable after the claim deadline |
 
 On a campaign that can be topped up, quiet periods and Capped APY don't leave budget behind. They slow the payout, so the campaign runs longer instead. Anything it couldn't pay out before its latest end date is recoverable the same way.
 
-The standard claim window is **60 days** after a campaign ends, configurable per campaign. Once it closes, unclaimed rewards become recoverable. See [Campaign Lifecycle](/campaigns/campaign-lifecycle) for the phase this belongs to.
+The standard claim window is **60 days** after a campaign ends, configurable per campaign. Once that deadline passes, unclaimed rewards become recoverable. Users can keep claiming until you withdraw them, and that withdrawal closes claims for everyone. See [Campaign Lifecycle](/campaigns/campaign-lifecycle#closed) for the phase this belongs to.
 
 <Note>
   Recovery is an action you take, not an automatic transfer. The Rabbithole team walks through it when a campaign finalizes.
