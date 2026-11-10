@@ -53,7 +53,8 @@ const { to, data, value } = tbi.encodeClaim({ id: proof.id, proof });
 | --- | --- | --- |
 | `0x09bde339` | `InvalidProof()` | Stale or tampered amount, wrong user, or a superseded root. The usual cause is a hand-computed `cumulativeAmount` |
 | `0x969bf728` | `NothingToClaim()` | The `cumulativeAmount` has already been claimed in full |
-| `0x82a49d9e` | `ClaimExpired()` | The campaign's claim window has closed |
+| `0xe10eee6a` | `ClaimsClosed()` | The creator withdrew after the claim deadline, which closes claims for good |
+| `0x653f0b39` | `PartialWithdrawal()` | Not a claim error: a creator withdrawal asked for less than the full withdrawable amount. Withdrawals are all-or-nothing |
 | `0xf4d678b8` | `InsufficientBalance()` | The campaign contract does not hold enough reward token |
 | `0xe07f7ab3` | `CampaignNotFinalized()` | The campaign has not reached a state where this claim is permitted |
 
