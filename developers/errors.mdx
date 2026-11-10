@@ -29,11 +29,12 @@ Non-2xx responses always return this object:
 | 404 | `NOT_FOUND` | The campaign or claim proof does not exist | From `claims.get`, **this is a normal state**. See below |
 | 429 | `RATE_LIMITED` | Per-IP rate limit exceeded | Back off. The SDK already retries with exponential backoff |
 | 500 | `INTERNAL_ERROR` | Server-side failure | Retry with backoff; if it persists, tell us |
+| 502 | `INTERNAL_ERROR` | `Claim status is temporarily unavailable`: the API could not read on-chain whether a campaign's claims are still open | Retry with backoff. The SDK already retries 5xx responses |
 
 <Warning>
   A 404 from `GET /v1/claims/{campaignId}/{address}` has **three** causes, and two of them are ordinary: the address has no position in that campaign, or no published merkle root covers its rewards yet. Neither is a failure. Catch it and render an accruing state rather than an error.
 
-  The third is different: the endpoint also 404s once the **claim window has closed**, even for a user who has a published, unclaimed leaf. Rendering "rewards accruing" there is wrong and permanent. Check `campaign.endTime` plus the claim window before choosing the copy.
+  The third is different: the endpoint also 404s once the campaign's **claims have closed**, even for a user who has a published, unclaimed leaf. Rendering "rewards accruing" there is wrong and permanent. Claims can only close after the claim deadline (`campaign.endTime` plus the claim window), so a 404 past the deadline means claims are closed, and a 404 before it means accruing. See [Claim Windows](/developers/concepts/claiming#claim-windows).
 </Warning>
 
 ```ts
@@ -44,7 +45,7 @@ try {
   proof = await tbi.claims.get(id, userAddress);
 } catch (e) {
   if (!(e instanceof TbiNotFoundError)) throw e;
-  // No position, no root published yet, or the claim window has closed.
+  // No position, no root published yet, or the campaign's claims have closed.
 }
 ```
 
