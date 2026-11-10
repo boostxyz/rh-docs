@@ -53,7 +53,7 @@ try {
   proof = await tbi.claims.get({ chainId: 8453, campaignIndex: 56 }, userAddress);
 } catch (e) {
   if (!(e instanceof TbiNotFoundError)) throw e;
-  // 404: no position, no root yet, or the claim window closed. See below.
+  // 404: no position, no root yet, or claims have closed. See below.
 }
 ```
 </CodeGroup>
@@ -61,7 +61,9 @@ try {
 <Warning>
   **A 404 here is usually a normal state, not an error.** It means either the address has no position in that campaign, or no published root covers its rewards yet. Catch `TbiNotFoundError` and render an accruing state; surfacing it as a failure produces support tickets for a system working correctly.
 
-  There is one exception. The endpoint also returns 404 once the **claim window has closed**, including for users who never claimed. Do not show an accruing state there. Gate the copy on the campaign schedule, not on the 404 alone.
+  There is one exception. The endpoint also returns 404 once the campaign's **claims have closed**, including for users who never claimed. Claims can only close after the claim deadline, so a 404 past the deadline means closed. Do not show an accruing state there. Gate the copy on the campaign schedule, not on the 404 alone.
+
+  Past the deadline, a proof can still come back: claims stay open until the creator withdraws. Show the claim button whenever a proof comes back, and show the deadline only until it passes. See [Claim Windows](/developers/concepts/claiming#claim-windows).
 </Warning>
 
 ## Check Many Campaigns at Once
