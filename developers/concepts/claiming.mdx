@@ -99,9 +99,13 @@ A claim proof for a cliff campaign carries that state:
 
 ## Claim Windows
 
-Claims do not stay open forever; the `ClaimExpired()` revert exists for exactly this. Standard campaigns allow **60 days** after the campaign ends, and the window is configurable per campaign. Once it closes, unclaimed rewards become recoverable by the campaign creator.
+Every campaign has a claim deadline: its `endTime` plus its claim window. Standard campaigns allow **60 days**, and the window is configurable per campaign.
+
+Until the deadline, everything a user earned stays claimable: the creator can only withdraw budget no user earned. After the deadline, claims stay open until the creator withdraws the unclaimed rewards. That withdrawal takes everything left in the contract and closes claims for every user. Later claims revert with `ClaimsClosed()`, and claims never reopen, even if tokens are later sent to the contract.
 
 <Note>
+  The API tracks this for you: `claims.get` returns a proof while claims are open and 404 once they close. Past the deadline, gate the claim action on whether the API returns a proof, not on the date, and show the deadline only until it passes.
+
   The claim deadline is not currently exposed as an API field. If your UI needs to show a countdown, ask the Rabbithole team for the window on your specific campaign. See [Campaign Lifecycle](/campaigns/campaign-lifecycle) for the phase this belongs to.
 </Note>
 
