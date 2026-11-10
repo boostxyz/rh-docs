@@ -92,8 +92,8 @@ Five states cover everything a user can be in:
 | Condition | Show |
 | --- | --- |
 | No position in the campaign | Nothing, or a prompt to deposit |
-| Position exists, `claims.get` returns 404, campaign still within its claim window | "Rewards accruing, claimable after the next distribution" |
-| `claims.get` returns 404 and the claim window has closed | "Claim window closed", never an accruing message |
+| Position exists, `claims.get` returns 404, claim deadline not yet passed | "Rewards accruing, claimable after the next distribution" |
+| `claims.get` returns 404 and the claim deadline has passed | "Claims closed", never an accruing message |
 | `claimable === 0n` and `accumulatedRewards > 0n` | The same accruing message |
 | `claimable > 0n`, wallet on the wrong chain | A button that prompts a switch to the reward chain |
 | `claimable > 0n`, wallet on the reward chain | An active claim button |
